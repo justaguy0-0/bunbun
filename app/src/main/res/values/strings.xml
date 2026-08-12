@@ -1,0 +1,117 @@
+<resources>
+    <!-- App / common -->
+    <string name="app_name">Bunbun</string>
+    <string name="common_back">Назад</string>
+    <string name="common_show">Показать</string>
+    <string name="common_hide">Скрыть</string>
+    <string name="common_search">Найти</string>
+    <string name="common_logout">Выйти</string>
+    <string name="common_sync">Обновить</string>
+    <string name="common_syncing">Обновляем…</string>
+    <string name="common_retry">Повторить</string>
+
+    <!-- Startup -->
+    <string name="startup_code">ЗАПУСК / 01</string>
+    <string name="startup_title">Запускаем Bunbun</string>
+    <string name="startup_message">Восстанавливаем личный сеанс…</string>
+    <string name="startup_error_code">ОШИБКА / ЗАПУСК</string>
+    <string name="startup_error_title">Не удалось восстановить сеанс</string>
+    <string name="startup_retry">Запустить снова</string>
+
+    <!-- Authentication -->
+    <string name="auth_login_node">ВХОД / 01</string>
+    <string name="auth_brand">BUNBUN</string>
+    <string name="auth_login_title">С возвращением</string>
+    <string name="auth_login_subtitle">Подключение к личной линии</string>
+    <string name="auth_identity_check">ПРОВЕРКА ДОСТУПА</string>
+    <string name="auth_secure_session">ЗАЩИЩЁННЫЙ СЕАНС</string>
+    <string name="auth_username">Имя пользователя</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_enter">Войти  →</string>
+    <string name="auth_create_account">Создать аккаунт</string>
+    <string name="auth_register_node">РЕГИСТРАЦИЯ / 02</string>
+    <string name="auth_register_title">Новый аккаунт</string>
+    <string name="auth_register_subtitle">Создайте имя для личных линий</string>
+    <string name="auth_identity_profile">ПРОФИЛЬ</string>
+    <string name="auth_three_fields">3 ПОЛЯ</string>
+    <string name="auth_username_hint">3–32 · латиница a–z, цифры и _</string>
+    <string name="auth_display_name">Отображаемое имя</string>
+    <string name="auth_display_name_hint">Так вас увидят собеседники</string>
+    <string name="auth_password_hint">8–72 символа · не отображается</string>
+    <string name="auth_register_action">Создать аккаунт  →</string>
+    <string name="auth_back_to_login">Назад ко входу</string>
+    <string name="auth_tagline">ЛИЧНЫЕ ЛИНИИ · ПРЯМАЯ СВЯЗЬ</string>
+
+    <!-- Chats -->
+    <string name="chats_title">Bunbun // Чаты</string>
+    <string name="chats_subtitle">@%1$s · связь установлена</string>
+    <string name="chats_find_people_description">Найти человека</string>
+    <string name="chats_logout_description">Выйти из аккаунта</string>
+    <string name="chats_section">АКТИВНЫЕ ЛИНИИ</string>
+    <string name="chats_loading_code">СВЯЗЬ</string>
+    <string name="chats_loading_title">Загружаем чаты</string>
+    <string name="chats_loading_message">Связываемся с узлом Bunbun…</string>
+    <string name="chats_error_code">ОШИБКА / СПИСОК</string>
+    <string name="chats_error_title">Не удалось загрузить чаты</string>
+    <string name="chats_retry">Обновить список</string>
+    <string name="chats_empty_code">00 / ТИШИНА</string>
+    <string name="chats_empty_title">Линий связи пока нет</string>
+    <string name="chats_empty_message">Найдите человека и отправьте первое сообщение.</string>
+    <string name="chats_find_action">Найти человека  →</string>
+    <string name="chats_no_messages">Линия открыта · сообщений пока нет</string>
+    <string name="chats_new">НОВЫЙ</string>
+
+    <!-- Search -->
+    <string name="search_title">Поиск людей</string>
+    <string name="search_subtitle">Найти собеседника в Bunbun</string>
+    <string name="search_parameters">ПАРАМЕТРЫ ПОИСКА</string>
+    <string name="search_max_chars">ДО 64 СИМВОЛОВ</string>
+    <string name="search_field">Имя или имя пользователя</string>
+    <string name="search_run">Найти</string>
+    <string name="search_loading_code">ПОИСК</string>
+    <string name="search_loading_title">Ищем собеседника</string>
+    <string name="search_loading_message">Проверяем каталог пользователей…</string>
+    <string name="search_error_code">ОШИБКА / ПОИСК</string>
+    <string name="search_error_title">Поиск сейчас недоступен</string>
+    <string name="search_error_message">Проверьте соединение и повторите запрос.</string>
+    <string name="search_retry">Искать снова</string>
+    <string name="search_idle_code">ОЖИДАНИЕ ЗАПРОСА</string>
+    <string name="search_idle_title">Поиск готов</string>
+    <string name="search_idle_message">Введите имя, чтобы начать поиск.</string>
+    <string name="search_empty_code">00 / НЕ НАЙДЕНО</string>
+    <string name="search_empty_title">Никто не найден</string>
+    <string name="search_empty_message">Попробуйте изменить запрос.</string>
+    <string name="search_matches">НАЙДЕНО</string>
+    <string name="search_message_action">НАПИСАТЬ  →</string>
+
+    <!-- Chat -->
+    <string name="chat_subtitle">Личная линия · связь есть</string>
+    <string name="chat_loading_code">СВЯЗЬ</string>
+    <string name="chat_loading_title">Загружаем сообщения</string>
+    <string name="chat_loading_message">Получаем историю разговора…</string>
+    <string name="chat_error_code">ОШИБКА / ЛИНИЯ</string>
+    <string name="chat_error_title">Не удалось загрузить сообщения</string>
+    <string name="chat_retry">Подключиться снова</string>
+    <string name="chat_empty_code">00 / ТИШИНА</string>
+    <string name="chat_empty_title">Здесь пока тихо</string>
+    <string name="chat_empty_message">Отправьте первое сообщение.</string>
+    <string name="chat_peer_receive">СОБЕСЕДНИК / ПРИЁМ</string>
+    <string name="chat_you_transmit">ВЫ / ПЕРЕДАЧА</string>
+    <string name="chat_new_message">НОВОЕ СООБЩЕНИЕ</string>
+    <string name="chat_message">Сообщение</string>
+    <string name="chat_send_description">Отправить сообщение</string>
+    <string name="chat_open_link_description">Открыть ссылку:</string>
+    <string name="chat_link_open_error">Не удалось открыть ссылку.</string>
+
+    <!-- User-facing errors -->
+    <string name="error_invalid_credentials">Неверное имя пользователя или пароль.</string>
+    <string name="error_username_taken">Это имя пользователя уже занято.</string>
+    <string name="error_username_format">Имя пользователя: 3–32 символа, латиница a–z, цифры и _.</string>
+    <string name="error_display_name_format">Отображаемое имя должно содержать от 1 до 64 символов.</string>
+    <string name="error_password_format">Пароль должен содержать от 8 до 72 символов.</string>
+    <string name="error_validation">Проверьте заполненные поля.</string>
+    <string name="error_network">Не удалось связаться с сервером.</string>
+    <string name="error_timeout">Сервер отвечает слишком долго. Попробуйте ещё раз.</string>
+    <string name="error_session_expired">Сеанс завершён. Войдите снова.</string>
+    <string name="error_unknown">Что-то пошло не так. Попробуйте ещё раз.</string>
+</resources>

@@ -1,0 +1,48 @@
+*.iml
+.gradle/
+.kotlin/
+local.properties
+
+# Android/Gradle build outputs
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# Generated captures and UI previews
+captures/
+screenshots/
+ui-previews/
+preview-output/
+
+# Android Studio machine-local state
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+
+# Native build intermediates
+.externalNativeBuild/
+.cxx/
+
+# Signing material and local secrets
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
+signing.properties
+secrets.properties
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
