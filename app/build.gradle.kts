@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().apply {
@@ -68,6 +69,8 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

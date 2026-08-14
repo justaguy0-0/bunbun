@@ -18,5 +18,6 @@ interface BunbunApi {
     @GET("api/v1/messages/list.php") suspend fun messages(@Query("chat_id") chatId: Long, @Query("after_id") afterId: Long? = null): Response<ApiEnvelope<MessagesData>>
     @POST("api/v1/messages/send.php") suspend fun sendMessage(@Body request: SendMessageRequest): Response<ApiEnvelope<MessageData>>
     @POST("api/v1/messages/mark-read.php") suspend fun markRead(@Body request: MarkReadRequest): Response<ApiEnvelope<MarkReadData>>
+    @POST("api/v1/push/register.php") suspend fun registerPush(@Body request: PushTokenRequest): Response<ApiEnvelope<PushDeviceData>>
+    @POST("api/v1/push/unregister.php") suspend fun unregisterPush(@Body request: PushTokenRequest): Response<ApiEnvelope<PushDeviceData>>
 }
-

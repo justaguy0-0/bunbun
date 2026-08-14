@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "101152017192",
+    "project_id": "bunbun-ac15f",
+    "storage_bucket": "bunbun-ac15f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:101152017192:android:ec036c4413b663f78d5e1d",
+        "android_client_info": {
+          "package_name": "com.example.bunbun"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2afWjFUrxyda3HjskaO1ifLyBInnoSjw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

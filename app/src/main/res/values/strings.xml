@@ -10,6 +10,14 @@
     <string name="common_syncing">Обновляем…</string>
     <string name="common_retry">Повторить</string>
 
+    <!-- Push notifications -->
+    <string name="notification_channel_name">Сообщения</string>
+    <string name="notification_channel_description">Новые сообщения Bunbun</string>
+    <string name="notification_permission_title">РАЗРЕШИТЬ УВЕДОМЛЕНИЯ?</string>
+    <string name="notification_permission_message">Bunbun сможет сообщать о новых сообщениях, когда приложение закрыто.</string>
+    <string name="notification_permission_allow">Разрешить</string>
+    <string name="notification_permission_not_now">Не сейчас</string>
+
     <!-- Startup -->
     <string name="startup_code">ЗАПУСК / 01</string>
     <string name="startup_title">Запускаем Bunbun</string>

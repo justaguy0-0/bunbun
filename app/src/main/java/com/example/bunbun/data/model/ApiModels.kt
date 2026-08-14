@@ -39,6 +39,7 @@ data class ChatDto(
 @Serializable data class CreateDirectRequest(@SerialName("user_id") val userId: Long)
 @Serializable data class SendMessageRequest(@SerialName("chat_id") val chatId: Long, val text: String)
 @Serializable data class MarkReadRequest(@SerialName("chat_id") val chatId: Long, @SerialName("message_id") val messageId: Long? = null)
+@Serializable data class PushTokenRequest(val token: String, val platform: String)
 
 @Serializable
 data class AuthData(
@@ -55,4 +56,4 @@ data class AuthData(
 @Serializable data class MessageData(val message: MessageDto)
 @Serializable data class LogoutData(@SerialName("logged_out") val loggedOut: Boolean)
 @Serializable data class MarkReadData(@SerialName("last_read_message_id") val lastReadMessageId: Long)
-
+@Serializable data class PushDeviceData(val registered: Boolean? = null, val unregistered: Boolean? = null)

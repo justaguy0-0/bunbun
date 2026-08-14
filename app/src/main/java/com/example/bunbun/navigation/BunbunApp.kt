@@ -1,6 +1,12 @@
 package com.example.bunbun.navigation
 
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -9,12 +15,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,6 +40,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.bunbun.R
+import com.example.bunbun.AppContainer
 import com.example.bunbun.data.model.UserDto
 import com.example.bunbun.data.repository.BunbunRepository
 import com.example.bunbun.ui.AppViewModel
@@ -35,19 +54,32 @@ import com.example.bunbun.ui.chats.ChatsScreen
 import com.example.bunbun.ui.chats.ChatsViewModel
 import com.example.bunbun.ui.common.ViewModelFactory
 import com.example.bunbun.ui.common.TerminalScreen
+import com.example.bunbun.ui.common.TerminalPanel
+import com.example.bunbun.ui.common.PrimaryTerminalButton
+import com.example.bunbun.ui.common.SecondaryTerminalButton
 import com.example.bunbun.ui.common.TerminalState
 import com.example.bunbun.ui.common.localizedErrorMessage
 import com.example.bunbun.ui.search.SearchScreen
 import com.example.bunbun.ui.search.SearchViewModel
 
 @Composable
-fun BunbunApp(repository: BunbunRepository) {
+fun BunbunApp(container: AppContainer) {
+    val repository = container.repository
     val factory = remember(repository) { ViewModelFactory { AppViewModel(repository) } }
     val appViewModel: AppViewModel = viewModel(factory = factory)
     when (val session = appViewModel.state.collectAsState().value) {
         SessionState.Checking -> LoadingScreen()
         SessionState.SignedOut -> AuthNavigation(repository, appViewModel::signedIn)
-        is SessionState.SignedIn -> MainNavigation(repository, session.user, appViewModel::logout)
+        is SessionState.SignedIn -> {
+            MainNavigation(
+                repository,
+                session.user,
+                appViewModel::logout,
+                container.foregroundChatTracker,
+                container.pendingChatNavigation,
+            )
+            NotificationPermissionPrompt(container.notificationPermissionPreferences)
+        }
         is SessionState.Error -> StartupError(session.message, appViewModel::restore)
     }
 }
@@ -77,8 +109,24 @@ private fun AuthNavigation(repository: BunbunRepository, onSignedIn: (UserDto) -
 }
 
 @Composable
-private fun MainNavigation(repository: BunbunRepository, currentUser: UserDto, onLogout: () -> Unit) {
+private fun MainNavigation(
+    repository: BunbunRepository,
+    currentUser: UserDto,
+    onLogout: () -> Unit,
+    foregroundChatTracker: com.example.bunbun.push.ForegroundChatTracker,
+    pendingChatNavigation: com.example.bunbun.push.PendingChatNavigation,
+) {
     val nav = rememberNavController()
+    val pendingTarget by pendingChatNavigation.target.collectAsState()
+    LaunchedEffect(pendingTarget) {
+        pendingTarget?.let { target ->
+            nav.navigate("chat/${target.chatId}/${Uri.encode(target.peerName)}") {
+                launchSingleTop = true
+                popUpTo("chats") { inclusive = false }
+            }
+            pendingChatNavigation.consume(target)
+        }
+    }
     NavHost(
         navController = nav,
         startDestination = "chats",
@@ -118,6 +166,10 @@ private fun MainNavigation(repository: BunbunRepository, currentUser: UserDto, o
             ),
         ) { entry ->
             val chatId = entry.arguments?.getLong("chatId") ?: return@composable
+            DisposableEffect(chatId) {
+                foregroundChatTracker.setActiveChat(chatId)
+                onDispose { foregroundChatTracker.clearActiveChat(chatId) }
+            }
             val peerName = Uri.decode(entry.arguments?.getString("peerName").orEmpty())
             val vm: ChatViewModel = viewModel(
                 key = "chat-$chatId",
@@ -125,6 +177,56 @@ private fun MainNavigation(repository: BunbunRepository, currentUser: UserDto, o
             )
             val state by vm.state.collectAsState()
             ChatScreen(peerName, currentUser.id, state, vm::setDraft, vm::send, vm::retry) { nav.popBackStack() }
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionPrompt(preferences: com.example.bunbun.push.NotificationPermissionPreferences) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val activity = context as? Activity ?: return
+    var visible by remember {
+        mutableStateOf(
+            !preferences.wasPrompted() &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    if (!visible) return
+
+    Dialog(onDismissRequest = {
+        preferences.markPrompted()
+        visible = false
+    }) {
+        TerminalPanel(Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                androidx.compose.material3.Text(
+                    stringResource(R.string.notification_permission_title),
+                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                )
+                androidx.compose.material3.Text(
+                    stringResource(R.string.notification_permission_message),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                )
+                PrimaryTerminalButton(
+                    text = stringResource(R.string.notification_permission_allow),
+                    onClick = {
+                        preferences.markPrompted()
+                        visible = false
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SecondaryTerminalButton(
+                    text = stringResource(R.string.notification_permission_not_now),
+                    onClick = {
+                        preferences.markPrompted()
+                        visible = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
