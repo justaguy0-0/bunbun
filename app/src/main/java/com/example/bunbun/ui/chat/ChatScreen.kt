@@ -42,12 +42,21 @@ fun ChatScreen(
     onBack: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val initialScrollState = remember { ChatInitialScrollState() }
     val timeline = remember(state.messages) { buildChatTimeline(state.messages) }
     LaunchedEffect(timeline.lastOrNull()?.key) {
-        val wasAtBottom = listState.layoutInfo.totalItemsCount == 0 ||
-            !listState.canScrollForward ||
-            listState.firstVisibleItemIndex >= (timeline.lastIndex - 3).coerceAtLeast(0)
-        if (timeline.isNotEmpty() && wasAtBottom) listState.animateScrollToItem(timeline.lastIndex)
+        val initialTarget = initialScrollState.consumeTargetIndex(timeline.size)
+        if (initialTarget != null) {
+            listState.scrollToItem(initialTarget)
+            return@LaunchedEffect
+        }
+        if (timeline.isEmpty()) return@LaunchedEffect
+
+        val layoutInfo = listState.layoutInfo
+        val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+        val wasNearBottom = !listState.canScrollForward ||
+            lastVisibleIndex != null && lastVisibleIndex >= (layoutInfo.totalItemsCount - 2).coerceAtLeast(0)
+        if (wasNearBottom) listState.animateScrollToItem(timeline.lastIndex)
     }
 
     TerminalScreen {
