@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="sharedpref" path="bunbun_secure_session.xml" />
+    <exclude domain="database" path="bunbun-local.db" />
+    <exclude domain="database" path="bunbun-local.db-shm" />
+    <exclude domain="database" path="bunbun-local.db-wal" />
 </full-backup-content>
-

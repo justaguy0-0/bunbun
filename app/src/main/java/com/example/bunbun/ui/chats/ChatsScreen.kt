@@ -26,7 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.bunbun.R
-import com.example.bunbun.data.model.ChatDto
+import com.example.bunbun.data.local.CachedChat
+import com.example.bunbun.data.local.MessageSendState
 import com.example.bunbun.data.model.UserDto
 import com.example.bunbun.ui.common.PressableTerminalRow
 import com.example.bunbun.ui.common.TerminalBadge
@@ -45,7 +46,7 @@ fun ChatsScreen(
     state: ChatsUiState,
     onRefresh: () -> Unit,
     onSearch: () -> Unit,
-    onChat: (ChatDto) -> Unit,
+    onChat: (CachedChat) -> Unit,
     onLogout: () -> Unit,
 ) {
     TerminalScreen {
@@ -58,6 +59,15 @@ fun ChatsScreen(
                     TerminalIconButton("×", stringResource(R.string.chats_logout_description), onLogout)
                 },
             )
+            if (state.offline && state.chats.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.common_offline_cached),
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)).padding(6.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -86,7 +96,7 @@ fun ChatsScreen(
                 state.error != null && state.chats.isEmpty() -> TerminalState(
                     code = stringResource(R.string.chats_error_code),
                     title = stringResource(R.string.chats_error_title),
-                    message = localizedErrorMessage(state.error),
+                    message = if (state.offline) stringResource(R.string.first_connection_required) else localizedErrorMessage(state.error),
                     actionLabel = stringResource(R.string.chats_retry),
                     onAction = onRefresh,
                     modifier = Modifier.fillMaxSize(),
@@ -121,7 +131,7 @@ fun ChatsScreen(
 }
 
 @Composable
-private fun ChatRow(chat: ChatDto, onClick: () -> Unit) {
+private fun ChatRow(chat: CachedChat, onClick: () -> Unit) {
     PressableTerminalRow(onClick = onClick) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Row(
@@ -138,7 +148,7 @@ private fun ChatRow(chat: ChatDto, onClick: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        chat.peer.displayName.firstOrNull()?.uppercase() ?: "?",
+                        chat.peerDisplayName.firstOrNull()?.uppercase() ?: "?",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -146,7 +156,7 @@ private fun ChatRow(chat: ChatDto, onClick: () -> Unit) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text(
-                            chat.peer.displayName,
+                            chat.peerDisplayName,
                             modifier = Modifier.weight(1f, fill = false),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -162,10 +172,17 @@ private fun ChatRow(chat: ChatDto, onClick: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (chat.lastMessage?.sendState in setOf(MessageSendState.PENDING, MessageSendState.SENDING)) {
+                        Text(
+                            stringResource(R.string.chats_pending_preview),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        compactTime(chat.lastMessage?.createdAt) ?: stringResource(R.string.chats_new),
+                        compactTime(chat.lastMessage?.createdAtMillis) ?: stringResource(R.string.chats_new),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary,
                     )
@@ -177,8 +194,7 @@ private fun ChatRow(chat: ChatDto, onClick: () -> Unit) {
     }
 }
 
-private fun compactTime(raw: String?): String? {
-    if (raw.isNullOrBlank()) return null
-    val time = raw.substringAfter(' ', missingDelimiterValue = raw)
-    return time.take(5).ifBlank { "--:--" }
+private fun compactTime(timestampMillis: Long?): String? = timestampMillis?.let {
+    java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        .format(java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()))
 }

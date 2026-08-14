@@ -1,0 +1,116 @@
+package com.example.bunbun
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.example.bunbun.data.local.BunbunDatabase
+import com.example.bunbun.data.local.LocalDataStore
+import com.example.bunbun.data.local.MessageSendState
+import com.example.bunbun.data.model.ChatDto
+import com.example.bunbun.data.model.MessageDto
+import com.example.bunbun.data.model.MessagesData
+import com.example.bunbun.data.model.UserDto
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class LocalDataStoreTest {
+    private lateinit var context: Context
+    private lateinit var database: BunbunDatabase
+    private var clock = 1_000L
+    private var clientSequence = 0
+
+    @Before fun setUp() {
+        context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase(DB_NAME)
+        database = openDatabase()
+    }
+
+    @After fun tearDown() {
+        database.close()
+        context.deleteDatabase(DB_NAME)
+    }
+
+    @Test fun pendingMessagesArePersistentOrderedAndMergedByClientId() = runBlocking {
+        val store = store()
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer A")))
+
+        val a = store.queueOutgoing(ACCOUNT_A, CHAT_ID, ACCOUNT_A, "A")
+        clock++
+        val b = store.queueOutgoing(ACCOUNT_A, CHAT_ID, ACCOUNT_A, "B")
+        clock++
+        val c = store.queueOutgoing(ACCOUNT_A, CHAT_ID, ACCOUNT_A, "C")
+
+        assertEquals(listOf("A", "B", "C"), store.pendingMessages(ACCOUNT_A).map { it.text })
+        database.close()
+        database = openDatabase()
+        val restored = LocalDataStore(database)
+        assertEquals(listOf("A", "B", "C"), restored.pendingMessages(ACCOUNT_A).map { it.text })
+
+        restored.acknowledge(
+            ACCOUNT_A,
+            ACCOUNT_A,
+            MessageDto(101, CHAT_ID, ACCOUNT_A, "A", "2026-08-14T10:00:00Z", a.clientMessageId),
+        )
+        val messages = restored.observeMessages(ACCOUNT_A, CHAT_ID).first()
+        assertEquals(3, messages.size)
+        assertEquals(101L, messages.first { it.clientMessageId == a.clientMessageId }.serverId)
+        assertEquals(MessageSendState.SENT, messages.first { it.clientMessageId == a.clientMessageId }.sendState)
+        assertNotEquals(b.clientMessageId, c.clientMessageId)
+
+        restored.mergeMessages(ACCOUNT_A, ACCOUNT_A, CHAT_ID, MessagesData(emptyList(), 101))
+        assertEquals(
+            MessageSendState.READ,
+            restored.observeMessages(ACCOUNT_A, CHAT_ID).first().first { it.clientMessageId == a.clientMessageId }.sendState,
+        )
+    }
+
+    @Test fun identicalServerAndChatIdsRemainAccountIsolated() = runBlocking {
+        val store = store()
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer A")))
+        store.mergeChats(ACCOUNT_B, listOf(chat(peerName = "Peer B")))
+        store.mergeMessages(
+            ACCOUNT_A,
+            ACCOUNT_A,
+            CHAT_ID,
+            MessagesData(listOf(MessageDto(5, CHAT_ID, ACCOUNT_A, "A only", "2026-08-14T10:00:00Z"))),
+        )
+        store.mergeMessages(
+            ACCOUNT_B,
+            ACCOUNT_B,
+            CHAT_ID,
+            MessagesData(listOf(MessageDto(5, CHAT_ID, ACCOUNT_B, "B only", "2026-08-14T10:00:00Z"))),
+        )
+
+        assertEquals("Peer A", store.observeChats(ACCOUNT_A).first().single().peerDisplayName)
+        assertEquals("Peer B", store.observeChats(ACCOUNT_B).first().single().peerDisplayName)
+        assertEquals("A only", store.observeMessages(ACCOUNT_A, CHAT_ID).first().single().text)
+        assertEquals("B only", store.observeMessages(ACCOUNT_B, CHAT_ID).first().single().text)
+    }
+
+    private fun store() = LocalDataStore(database, now = { clock }, newClientId = { "00000000-0000-4000-8000-${(++clientSequence).toString().padStart(12, '0')}" })
+
+    private fun openDatabase() = Room.databaseBuilder(context, BunbunDatabase::class.java, DB_NAME)
+        .allowMainThreadQueries()
+        .build()
+
+    private fun chat(peerName: String) = ChatDto(
+        id = CHAT_ID,
+        type = "direct",
+        peer = UserDto(99, "peer", peerName, "2026-08-14T09:00:00Z"),
+    )
+
+    private companion object {
+        const val DB_NAME = "bunbun-room-test.db"
+        const val CHAT_ID = 10L
+        const val ACCOUNT_A = 1L
+        const val ACCOUNT_B = 2L
+    }
+}

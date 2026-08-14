@@ -3,11 +3,10 @@ package com.example.bunbun.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bunbun.Config
-import com.example.bunbun.data.model.MessageDto
+import com.example.bunbun.data.local.CachedMessage
 import com.example.bunbun.data.repository.BunbunRepository
-import com.example.bunbun.ui.common.lastMessageId
-import com.example.bunbun.ui.common.mergeMessages
 import com.example.bunbun.ui.common.asUiError
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,23 +16,36 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class ChatUiState(
-    val messages: List<MessageDto> = emptyList(),
+    val messages: List<CachedMessage> = emptyList(),
     val draft: String = "",
     val loading: Boolean = true,
-    val sending: Boolean = false,
+    val saving: Boolean = false,
+    val offline: Boolean = false,
     val error: String? = null,
 )
 
-class ChatViewModel(private val chatId: Long, private val repository: BunbunRepository) : ViewModel() {
+class ChatViewModel(
+    private val accountId: Long,
+    private val chatId: Long,
+    private val repository: BunbunRepository,
+) : ViewModel() {
     private val mutableState = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = mutableState.asStateFlow()
+    private var readJob: Job? = null
+    private var lastReadAttempt = 0L
 
     init {
-        loadHistory()
+        viewModelScope.launch {
+            repository.observeMessages(accountId, chatId).collect { messages ->
+                mutableState.update { it.copy(messages = messages, loading = it.loading && messages.isEmpty()) }
+                markLatestRead(messages)
+            }
+        }
+        synchronize(initial = true)
         viewModelScope.launch {
             while (isActive) {
                 delay(Config.POLL_INTERVAL_MS)
-                poll()
+                synchronize()
             }
         }
     }
@@ -42,48 +54,53 @@ class ChatViewModel(private val chatId: Long, private val repository: BunbunRepo
         if (value.length <= Config.MESSAGE_MAX_LENGTH) mutableState.update { it.copy(draft = value, error = null) }
     }
 
-    fun retry() { if (mutableState.value.messages.isEmpty()) loadHistory() else viewModelScope.launch { poll() } }
+    fun retry() = synchronize()
 
     fun send() {
         val text = mutableState.value.draft.trim()
-        if (text.isEmpty() || text.length > Config.MESSAGE_MAX_LENGTH || mutableState.value.sending) return
-        mutableState.update { it.copy(sending = true, error = null) }
+        if (text.isEmpty() || text.length > Config.MESSAGE_MAX_LENGTH || mutableState.value.saving) return
+        mutableState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.sendMessage(chatId, text) }
-                .onSuccess { message ->
-                    mutableState.update { it.copy(messages = mergeMessages(it.messages, listOf(message)), draft = "", sending = false) }
-                    markLatestRead()
+            runCatching { repository.queueMessage(accountId, chatId, text) }
+                .onSuccess {
+                    mutableState.update { state -> state.copy(draft = "", saving = false) }
+                    repository.drainOutbox()
                 }
-                .onFailure { error -> mutableState.update { it.copy(sending = false, error = error.asUiError("SEND_UNKNOWN")) } }
+                .onFailure { error ->
+                    mutableState.update { it.copy(saving = false, error = error.asUiError("LOCAL_OUTBOX_ERROR")) }
+                }
         }
     }
 
-    private fun loadHistory() {
-        mutableState.update { it.copy(loading = true, error = null) }
+    fun retryMessage(localId: String) {
         viewModelScope.launch {
-            runCatching { repository.messages(chatId) }
-                .onSuccess { messages ->
-                    mutableState.update { it.copy(messages = mergeMessages(it.messages, messages), loading = false) }
-                    markLatestRead()
-                }
-                .onFailure { error -> mutableState.update { it.copy(loading = false, error = error.asUiError("LOAD_MESSAGES_UNKNOWN")) } }
+            if (repository.retryMessage(accountId, localId)) repository.drainOutbox()
         }
     }
 
-    private suspend fun poll() {
-        val afterId = lastMessageId(mutableState.value.messages) ?: 0L
-        runCatching { repository.messages(chatId, afterId) }
-            .onSuccess { incoming ->
-                if (incoming.isNotEmpty()) {
-                    mutableState.update { it.copy(messages = mergeMessages(it.messages, incoming), error = null) }
-                    markLatestRead()
+    private fun synchronize(initial: Boolean = false) {
+        viewModelScope.launch {
+            runCatching { repository.syncMessages(accountId, chatId) }
+                .onSuccess { mutableState.update { it.copy(loading = false, offline = false, error = null) } }
+                .onFailure { error ->
+                    mutableState.update {
+                        it.copy(
+                            loading = false,
+                            offline = true,
+                            error = if (it.messages.isEmpty()) error.asUiError("LOAD_MESSAGES_UNKNOWN") else null,
+                        )
+                    }
                 }
-            }
-            .onFailure { error -> mutableState.update { it.copy(error = error.asUiError("POLLING_UNKNOWN")) } }
+        }
     }
 
-    private fun markLatestRead() {
-        val id = lastMessageId(mutableState.value.messages) ?: return
-        viewModelScope.launch { runCatching { repository.markRead(chatId, id) } }
+    private fun markLatestRead(messages: List<CachedMessage>) {
+        val latestServerId = messages.maxOfOrNull { it.serverId ?: 0L } ?: return
+        if (latestServerId <= 0L || latestServerId <= lastReadAttempt || readJob?.isActive == true) return
+        lastReadAttempt = latestServerId
+        readJob = viewModelScope.launch {
+            runCatching { repository.markRead(accountId, chatId, latestServerId) }
+                .onFailure { lastReadAttempt = 0L }
+        }
     }
 }

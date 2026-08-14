@@ -136,14 +136,14 @@ private fun MainNavigation(
         popExitTransition = { backExit() },
     ) {
         composable("chats") {
-            val vm: ChatsViewModel = viewModel(factory = ViewModelFactory { ChatsViewModel(repository) })
+            val vm: ChatsViewModel = viewModel(factory = ViewModelFactory { ChatsViewModel(currentUser.id, repository) })
             val state by vm.state.collectAsState()
             ChatsScreen(
                 currentUser = currentUser,
                 state = state,
                 onRefresh = vm::refresh,
                 onSearch = { nav.navigate("search") },
-                onChat = { nav.navigate("chat/${it.id}/${Uri.encode(it.peer.displayName)}") },
+                onChat = { nav.navigate("chat/${it.id}/${Uri.encode(it.peerDisplayName)}") },
                 onLogout = onLogout,
             )
         }
@@ -173,10 +173,10 @@ private fun MainNavigation(
             val peerName = Uri.decode(entry.arguments?.getString("peerName").orEmpty())
             val vm: ChatViewModel = viewModel(
                 key = "chat-$chatId",
-                factory = ViewModelFactory { ChatViewModel(chatId, repository) },
+                factory = ViewModelFactory { ChatViewModel(currentUser.id, chatId, repository) },
             )
             val state by vm.state.collectAsState()
-            ChatScreen(peerName, currentUser.id, state, vm::setDraft, vm::send, vm::retry) { nav.popBackStack() }
+            ChatScreen(peerName, state, vm::setDraft, vm::send, vm::retry, vm::retryMessage) { nav.popBackStack() }
         }
     }
 }

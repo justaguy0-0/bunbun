@@ -27,7 +27,10 @@ class AppViewModel(private val repository: BunbunRepository) : ViewModel() {
         mutableState.value = SessionState.Checking
         viewModelScope.launch {
             runCatching { repository.restoreSession() }
-                .onSuccess { user -> mutableState.value = user?.let(SessionState::SignedIn) ?: SessionState.SignedOut }
+                .onSuccess { user ->
+                    mutableState.value = user?.let(SessionState::SignedIn) ?: SessionState.SignedOut
+                    if (user != null) refreshSessionInBackground()
+                }
                 .onFailure { mutableState.value = SessionState.Error(it.asUiError("SESSION_RESTORE_UNKNOWN")) }
         }
     }
@@ -38,6 +41,16 @@ class AppViewModel(private val repository: BunbunRepository) : ViewModel() {
         viewModelScope.launch {
             runCatching { repository.logout() }
             mutableState.value = SessionState.SignedOut
+        }
+    }
+
+    private fun refreshSessionInBackground() {
+        viewModelScope.launch {
+            runCatching { repository.refreshSession() }
+                .onSuccess { user ->
+                    mutableState.value = user?.let(SessionState::SignedIn) ?: SessionState.SignedOut
+                }
+            // A connectivity failure deliberately leaves the cached signed-in state visible.
         }
     }
 }

@@ -122,4 +122,12 @@
     <string name="error_timeout">Сервер отвечает слишком долго. Попробуйте ещё раз.</string>
     <string name="error_session_expired">Сеанс завершён. Войдите снова.</string>
     <string name="error_unknown">Что-то пошло не так. Попробуйте ещё раз.</string>
+    <!-- Local-first messaging -->
+    <string name="common_offline_cached">ОФЛАЙН · ПОКАЗАНЫ СОХРАНЁННЫЕ ДАННЫЕ</string>
+    <string name="first_connection_required">Для первого подключения нужен интернет.</string>
+    <string name="chats_pending_preview">◷ В ОЧЕРЕДИ</string>
+    <string name="message_status_sending">Сообщение отправляется</string>
+    <string name="message_status_sent">Сообщение отправлено</string>
+    <string name="message_status_read">Сообщение прочитано</string>
+    <string name="message_status_failed">Ошибка отправки. Нажмите, чтобы повторить</string>
 </resources>

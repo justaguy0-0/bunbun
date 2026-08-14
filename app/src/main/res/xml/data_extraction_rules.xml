@@ -2,9 +2,14 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="bunbun_secure_session.xml" />
+        <exclude domain="database" path="bunbun-local.db" />
+        <exclude domain="database" path="bunbun-local.db-shm" />
+        <exclude domain="database" path="bunbun-local.db-wal" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="bunbun_secure_session.xml" />
+        <exclude domain="database" path="bunbun-local.db" />
+        <exclude domain="database" path="bunbun-local.db-shm" />
+        <exclude domain="database" path="bunbun-local.db-wal" />
     </device-transfer>
 </data-extraction-rules>
-
