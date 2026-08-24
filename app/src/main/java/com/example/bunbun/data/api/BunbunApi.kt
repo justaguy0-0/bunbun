@@ -20,4 +20,5 @@ interface BunbunApi {
     @POST("api/v1/messages/mark-read.php") suspend fun markRead(@Body request: MarkReadRequest): Response<ApiEnvelope<MarkReadData>>
     @POST("api/v1/push/register.php") suspend fun registerPush(@Body request: PushTokenRequest): Response<ApiEnvelope<PushDeviceData>>
     @POST("api/v1/push/unregister.php") suspend fun unregisterPush(@Body request: PushTokenRequest): Response<ApiEnvelope<PushDeviceData>>
+    @POST("api/v1/presence/touch.php") suspend fun touchPresence(): Response<ApiEnvelope<PresenceData>>
 }

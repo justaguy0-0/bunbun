@@ -52,7 +52,7 @@
 
     <!-- Chats -->
     <string name="chats_title">Bunbun // Чаты</string>
-    <string name="chats_subtitle">@%1$s · связь установлена</string>
+    <string name="chats_subtitle">@%1$s</string>
     <string name="chats_find_people_description">Найти человека</string>
     <string name="chats_logout_description">Выйти из аккаунта</string>
     <string name="chats_section">АКТИВНЫЕ ЛИНИИ</string>
@@ -93,7 +93,6 @@
     <string name="search_message_action">НАПИСАТЬ  →</string>
 
     <!-- Chat -->
-    <string name="chat_subtitle">Личная линия · связь есть</string>
     <string name="chat_loading_code">СВЯЗЬ</string>
     <string name="chat_loading_title">Загружаем сообщения</string>
     <string name="chat_loading_message">Получаем историю разговора…</string>

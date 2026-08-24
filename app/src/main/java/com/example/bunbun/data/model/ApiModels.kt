@@ -14,6 +14,7 @@ data class UserDto(
     val username: String,
     @SerialName("display_name") val displayName: String,
     @SerialName("created_at") val createdAt: String,
+    @SerialName("last_seen_at") val lastSeenAt: String? = null,
 )
 
 @Serializable
@@ -66,3 +67,4 @@ data class AuthData(
 @Serializable data class LogoutData(@SerialName("logged_out") val loggedOut: Boolean)
 @Serializable data class MarkReadData(@SerialName("last_read_message_id") val lastReadMessageId: Long)
 @Serializable data class PushDeviceData(val registered: Boolean? = null, val unregistered: Boolean? = null)
+@Serializable data class PresenceData(val touched: Boolean)

@@ -47,7 +47,15 @@ class DebugPreviewActivity : ComponentActivity() {
 
     @Composable
     private fun PreviewChatScreen() {
-        var state by remember { mutableStateOf(ChatUiState(messages = previewMessages, loading = false)) }
+        var state by remember {
+            mutableStateOf(
+                ChatUiState(
+                    messages = previewMessages,
+                    peerLastSeenAtMillis = Instant.parse("2026-08-24T07:42:00Z").toEpochMilli(),
+                    loading = false,
+                ),
+            )
+        }
         ChatScreen(
             peerName = peer.displayName,
             state = state,
@@ -87,6 +95,7 @@ class DebugPreviewActivity : ComponentActivity() {
                 peerUserId = peer.id,
                 peerUsername = peer.username,
                 peerDisplayName = peer.displayName,
+                peerLastSeenAtMillis = Instant.parse("2026-08-24T07:42:00Z").toEpochMilli(),
                 lastMessage = CachedChatPreview(null, "m4", "Сообщение пока в очереди", currentUser.id, previewMessages.last().createdAtMillis, MessageSendState.PENDING),
                 unreadCount = 2,
             ),

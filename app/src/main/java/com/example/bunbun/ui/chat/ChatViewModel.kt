@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class ChatUiState(
     val messages: List<CachedMessage> = emptyList(),
+    val peerLastSeenAtMillis: Long? = null,
     val draft: String = "",
     val loading: Boolean = true,
     val saving: Boolean = false,
@@ -36,11 +37,17 @@ class ChatViewModel(
 
     init {
         viewModelScope.launch {
+            repository.observeChat(accountId, chatId).collect { chat ->
+                mutableState.update { it.copy(peerLastSeenAtMillis = chat?.peerLastSeenAtMillis) }
+            }
+        }
+        viewModelScope.launch {
             repository.observeMessages(accountId, chatId).collect { messages ->
                 mutableState.update { it.copy(messages = messages, loading = it.loading && messages.isEmpty()) }
                 markLatestRead(messages)
             }
         }
+        viewModelScope.launch { runCatching { repository.syncChats(accountId) } }
         synchronize(initial = true)
         viewModelScope.launch {
             while (isActive) {

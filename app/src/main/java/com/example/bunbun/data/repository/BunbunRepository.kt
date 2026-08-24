@@ -93,6 +93,8 @@ class BunbunRepository(
 
     fun observeChats(accountId: Long): Flow<List<CachedChat>> = local.observeChats(accountId)
 
+    fun observeChat(accountId: Long, chatId: Long): Flow<CachedChat?> = local.observeChat(accountId, chatId)
+
     fun observeMessages(accountId: Long, chatId: Long): Flow<List<CachedMessage>> =
         local.observeMessages(accountId, chatId)
 
@@ -116,6 +118,11 @@ class BunbunRepository(
         val chat = unwrapApiResponse(api.createDirect(CreateDirectRequest(userId))).chat
         local.mergeChats(accountId, listOf(chat))
         return chat
+    }
+
+    suspend fun touchPresence() {
+        if (sessions.currentOrLoad() == null) return
+        unwrapApiResponse(api.touchPresence())
     }
 
     suspend fun queueMessage(accountId: Long, chatId: Long, text: String): CachedMessage {

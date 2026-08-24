@@ -71,6 +71,7 @@ fun BunbunApp(container: AppContainer) {
         SessionState.Checking -> LoadingScreen()
         SessionState.SignedOut -> AuthNavigation(repository, appViewModel::signedIn)
         is SessionState.SignedIn -> {
+            LaunchedEffect(session.user.id) { container.presenceSynchronizer.onAuthenticated() }
             MainNavigation(
                 repository,
                 session.user,

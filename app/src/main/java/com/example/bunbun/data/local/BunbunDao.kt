@@ -28,6 +28,9 @@ interface BunbunDao {
     @Query("SELECT * FROM cached_chats WHERE accountId = :accountId AND chatId = :chatId LIMIT 1")
     suspend fun chat(accountId: Long, chatId: Long): CachedChatEntity?
 
+    @Query("SELECT * FROM cached_chats WHERE accountId = :accountId AND chatId = :chatId LIMIT 1")
+    fun observeChat(accountId: Long, chatId: Long): Flow<CachedChatEntity?>
+
     @Upsert
     suspend fun upsertChat(chat: CachedChatEntity)
 

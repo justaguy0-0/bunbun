@@ -9,6 +9,7 @@ import com.example.bunbun.data.local.SessionManager
 import com.example.bunbun.data.local.SessionMetadataStore
 import com.example.bunbun.data.repository.BunbunRepository
 import com.example.bunbun.outbox.OutboxScheduler
+import com.example.bunbun.presence.PresenceSynchronizer
 import com.example.bunbun.push.ApiPushRegistrationRemote
 import com.example.bunbun.push.FirebasePushRegistrationTrigger
 import com.example.bunbun.push.ForegroundChatTracker
@@ -16,6 +17,9 @@ import com.example.bunbun.push.NotificationPermissionPreferences
 import com.example.bunbun.push.PendingChatNavigation
 import com.example.bunbun.push.PushTokenPreferences
 import com.example.bunbun.push.PushTokenSynchronizer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -37,4 +41,6 @@ class AppContainer(context: Context) {
     private val localDataStore = LocalDataStore(database)
     private val outboxScheduler = OutboxScheduler(appContext)
     val repository = BunbunRepository(api, sessions, localDataStore, outboxScheduler, pushTokenSynchronizer)
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val presenceSynchronizer = PresenceSynchronizer(applicationScope, repository::touchPresence)
 }

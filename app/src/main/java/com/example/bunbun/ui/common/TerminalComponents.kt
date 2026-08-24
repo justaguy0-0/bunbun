@@ -90,6 +90,7 @@ fun TerminalPanel(
 fun TerminalTopBar(
     title: String,
     subtitle: String? = null,
+    uppercaseSubtitle: Boolean = true,
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -119,7 +120,7 @@ fun TerminalTopBar(
                 )
                 subtitle?.let {
                     Text(
-                        text = it.uppercase(),
+                        text = if (uppercaseSubtitle) it.uppercase() else it,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

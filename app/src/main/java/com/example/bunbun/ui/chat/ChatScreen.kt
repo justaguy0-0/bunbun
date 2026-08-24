@@ -61,7 +61,12 @@ fun ChatScreen(
 
     TerminalScreen {
         Column(Modifier.fillMaxSize().navigationBarsPadding()) {
-            TerminalTopBar(title = peerName, subtitle = stringResource(R.string.chat_subtitle), onBack = onBack)
+            TerminalTopBar(
+                title = peerName,
+                subtitle = formatLastSeen(state.peerLastSeenAtMillis),
+                uppercaseSubtitle = false,
+                onBack = onBack,
+            )
             if (state.offline) OfflineStrip()
 
             Box(Modifier.weight(1f).fillMaxWidth()) {

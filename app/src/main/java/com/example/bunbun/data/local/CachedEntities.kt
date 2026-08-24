@@ -31,6 +31,7 @@ data class CachedChatEntity(
     val peerUsername: String,
     val peerDisplayName: String,
     val peerCreatedAt: String,
+    val peerLastSeenAtMillis: Long?,
     val lastMessageServerId: Long?,
     val lastMessageClientId: String?,
     val lastMessageText: String?,

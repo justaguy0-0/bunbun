@@ -33,6 +33,9 @@ class LocalDataStore(
         rows.map(CachedChatEntity::asModel)
     }
 
+    fun observeChat(accountId: Long, chatId: Long): Flow<CachedChat?> =
+        dao.observeChat(accountId, chatId).map { it?.asModel() }
+
     fun observeMessages(accountId: Long, chatId: Long): Flow<List<CachedMessage>> =
         dao.observeMessages(accountId, chatId).map { rows -> rows.map(CachedMessageEntity::asModel) }
 
@@ -140,6 +143,7 @@ class LocalDataStore(
             peerUsername = remote.peer.username,
             peerDisplayName = remote.peer.displayName,
             peerCreatedAt = remote.peer.createdAt,
+            peerLastSeenAtMillis = remote.peer.lastSeenAt?.let(::parseServerTimestamp),
             lastMessageServerId = if (keepLocalPreview) existing?.lastMessageServerId else last?.id,
             lastMessageClientId = if (keepLocalPreview) existing?.lastMessageClientId else last?.clientMessageId,
             lastMessageText = if (keepLocalPreview) existing?.lastMessageText else last?.text,
@@ -209,6 +213,7 @@ private fun CachedChatEntity.asModel() = CachedChat(
     peerUserId = peerUserId,
     peerUsername = peerUsername,
     peerDisplayName = peerDisplayName,
+    peerLastSeenAtMillis = peerLastSeenAtMillis,
     lastMessage = lastMessageText?.let {
         CachedChatPreview(
             serverId = lastMessageServerId,

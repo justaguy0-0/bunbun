@@ -27,9 +27,11 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         container.foregroundChatTracker.setForeground(true)
+        container.presenceSynchronizer.start()
     }
 
     override fun onStop() {
+        container.presenceSynchronizer.stop()
         container.foregroundChatTracker.setForeground(false)
         super.onStop()
     }

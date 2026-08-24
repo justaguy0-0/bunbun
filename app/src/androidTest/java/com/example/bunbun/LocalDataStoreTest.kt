@@ -19,6 +19,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class LocalDataStoreTest {
@@ -95,16 +96,36 @@ class LocalDataStoreTest {
         assertEquals("B only", store.observeMessages(ACCOUNT_B, CHAT_ID).first().single().text)
     }
 
+    @Test fun peerLastSeenSurvivesOfflineRestartAndNetworkMergeUpdatesIt() = runBlocking {
+        val firstSeen = "2026-08-23T19:17:00Z"
+        val refreshedSeen = "2026-08-24T07:42:00Z"
+        val store = store()
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer", lastSeenAt = firstSeen)))
+        val firstMillis = Instant.parse(firstSeen).toEpochMilli()
+        assertEquals(firstMillis, store.observeChat(ACCOUNT_A, CHAT_ID).first()?.peerLastSeenAtMillis)
+
+        database.close()
+        database = openDatabase()
+        val offlineStore = LocalDataStore(database)
+        assertEquals(firstMillis, offlineStore.observeChat(ACCOUNT_A, CHAT_ID).first()?.peerLastSeenAtMillis)
+
+        offlineStore.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer", lastSeenAt = refreshedSeen)))
+        assertEquals(
+            Instant.parse(refreshedSeen).toEpochMilli(),
+            offlineStore.observeChat(ACCOUNT_A, CHAT_ID).first()?.peerLastSeenAtMillis,
+        )
+    }
+
     private fun store() = LocalDataStore(database, now = { clock }, newClientId = { "00000000-0000-4000-8000-${(++clientSequence).toString().padStart(12, '0')}" })
 
     private fun openDatabase() = Room.databaseBuilder(context, BunbunDatabase::class.java, DB_NAME)
         .allowMainThreadQueries()
         .build()
 
-    private fun chat(peerName: String) = ChatDto(
+    private fun chat(peerName: String, lastSeenAt: String? = null) = ChatDto(
         id = CHAT_ID,
         type = "direct",
-        peer = UserDto(99, "peer", peerName, "2026-08-14T09:00:00Z"),
+        peer = UserDto(99, "peer", peerName, "2026-08-14T09:00:00Z", lastSeenAt),
     )
 
     private companion object {

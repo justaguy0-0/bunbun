@@ -1,0 +1,349 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "7456f5a6d4319791d4f98bcd70c6e858",
+    "entities": [
+      {
+        "tableName": "cached_current_users",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` INTEGER NOT NULL, `username` TEXT NOT NULL, `displayName` TEXT NOT NULL, `createdAt` TEXT NOT NULL, `updatedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`accountId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "username",
+            "columnName": "username",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updatedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "cached_chats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` INTEGER NOT NULL, `chatId` INTEGER NOT NULL, `type` TEXT NOT NULL, `peerUserId` INTEGER NOT NULL, `peerUsername` TEXT NOT NULL, `peerDisplayName` TEXT NOT NULL, `peerCreatedAt` TEXT NOT NULL, `peerLastSeenAtMillis` INTEGER, `lastMessageServerId` INTEGER, `lastMessageClientId` TEXT, `lastMessageText` TEXT, `lastMessageSenderId` INTEGER, `lastMessageCreatedAtMillis` INTEGER, `lastMessageSendState` TEXT, `unreadCount` INTEGER NOT NULL, `peerLastReadMessageId` INTEGER, `myLastReadMessageId` INTEGER, `updatedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `chatId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerUserId",
+            "columnName": "peerUserId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerUsername",
+            "columnName": "peerUsername",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerDisplayName",
+            "columnName": "peerDisplayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerCreatedAt",
+            "columnName": "peerCreatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerLastSeenAtMillis",
+            "columnName": "peerLastSeenAtMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageServerId",
+            "columnName": "lastMessageServerId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageClientId",
+            "columnName": "lastMessageClientId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageText",
+            "columnName": "lastMessageText",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageSenderId",
+            "columnName": "lastMessageSenderId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageCreatedAtMillis",
+            "columnName": "lastMessageCreatedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastMessageSendState",
+            "columnName": "lastMessageSendState",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unreadCount",
+            "columnName": "unreadCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerLastReadMessageId",
+            "columnName": "peerLastReadMessageId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "myLastReadMessageId",
+            "columnName": "myLastReadMessageId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updatedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "chatId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_chats_accountId_lastMessageCreatedAtMillis",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "lastMessageCreatedAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_chats_accountId_lastMessageCreatedAtMillis` ON `${TABLE_NAME}` (`accountId`, `lastMessageCreatedAtMillis`)"
+          },
+          {
+            "name": "index_cached_chats_accountId_updatedAtMillis",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "updatedAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_chats_accountId_updatedAtMillis` ON `${TABLE_NAME}` (`accountId`, `updatedAtMillis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "cached_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` TEXT NOT NULL, `accountId` INTEGER NOT NULL, `serverId` INTEGER, `clientMessageId` TEXT, `chatId` INTEGER NOT NULL, `senderId` INTEGER NOT NULL, `text` TEXT NOT NULL, `createdAtLocalMillis` INTEGER NOT NULL, `createdAtServerMillis` INTEGER, `isMine` INTEGER NOT NULL, `sendState` TEXT NOT NULL, `readByPeer` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `lastAttemptAtMillis` INTEGER, `failureReason` TEXT, PRIMARY KEY(`localId`))",
+        "fields": [
+          {
+            "fieldPath": "localId",
+            "columnName": "localId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "clientMessageId",
+            "columnName": "clientMessageId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderId",
+            "columnName": "senderId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtLocalMillis",
+            "columnName": "createdAtLocalMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtServerMillis",
+            "columnName": "createdAtServerMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isMine",
+            "columnName": "isMine",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sendState",
+            "columnName": "sendState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readByPeer",
+            "columnName": "readByPeer",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryCount",
+            "columnName": "retryCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptAtMillis",
+            "columnName": "lastAttemptAtMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "failureReason",
+            "columnName": "failureReason",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "localId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_messages_accountId_chatId_createdAtLocalMillis",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "chatId",
+              "createdAtLocalMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_messages_accountId_chatId_createdAtLocalMillis` ON `${TABLE_NAME}` (`accountId`, `chatId`, `createdAtLocalMillis`)"
+          },
+          {
+            "name": "index_cached_messages_accountId_serverId",
+            "unique": true,
+            "columnNames": [
+              "accountId",
+              "serverId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cached_messages_accountId_serverId` ON `${TABLE_NAME}` (`accountId`, `serverId`)"
+          },
+          {
+            "name": "index_cached_messages_accountId_clientMessageId",
+            "unique": true,
+            "columnNames": [
+              "accountId",
+              "clientMessageId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cached_messages_accountId_clientMessageId` ON `${TABLE_NAME}` (`accountId`, `clientMessageId`)"
+          },
+          {
+            "name": "index_cached_messages_accountId_sendState_createdAtLocalMillis",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "sendState",
+              "createdAtLocalMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_messages_accountId_sendState_createdAtLocalMillis` ON `${TABLE_NAME}` (`accountId`, `sendState`, `createdAtLocalMillis`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7456f5a6d4319791d4f98bcd70c6e858')"
+    ]
+  }
+}
