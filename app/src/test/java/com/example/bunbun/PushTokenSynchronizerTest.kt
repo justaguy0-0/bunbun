@@ -41,6 +41,26 @@ class PushTokenSynchronizerTest {
         assertTrue(storage.synchronized)
     }
 
+    @Test
+    fun logoutUnregistersOldAccountAndNextLoginRegistersForNewAccount() = runBlocking {
+        var session: String? = "account-a"
+        val storage = FakeStorage().apply {
+            value = "shared-device-token"
+            synchronized = true
+        }
+        val remote = FakeRemote()
+        val synchronizer = PushTokenSynchronizer(storage, PushSessionSource { session }, remote, PushRegistrationTrigger { })
+
+        synchronizer.unregisterBeforeLogout()
+        synchronizer.markSignedOut()
+        session = "account-b"
+        synchronizer.afterAuthentication()
+
+        assertEquals(listOf("shared-device-token"), remote.unregistered)
+        assertEquals(listOf("shared-device-token"), remote.registered)
+        assertTrue(storage.synchronized)
+    }
+
     private class FakeStorage : PushTokenStorage {
         var value: String? = null
         var synchronized = false
@@ -53,7 +73,8 @@ class PushTokenSynchronizerTest {
 
     private class FakeRemote : PushRegistrationRemote {
         val registered = mutableListOf<String>()
+        val unregistered = mutableListOf<String>()
         override suspend fun register(token: String) { registered += token }
-        override suspend fun unregister(token: String) = Unit
+        override suspend fun unregister(token: String) { unregistered += token }
     }
 }

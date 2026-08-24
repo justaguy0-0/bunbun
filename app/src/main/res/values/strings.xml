@@ -54,7 +54,7 @@
     <string name="chats_title">Bunbun // Чаты</string>
     <string name="chats_subtitle">@%1$s</string>
     <string name="chats_find_people_description">Найти человека</string>
-    <string name="chats_logout_description">Выйти из аккаунта</string>
+    <string name="chats_settings_description">Настройки</string>
     <string name="chats_section">АКТИВНЫЕ ЛИНИИ</string>
     <string name="chats_loading_code">СВЯЗЬ</string>
     <string name="chats_loading_title">Загружаем чаты</string>
@@ -68,6 +68,26 @@
     <string name="chats_find_action">Найти человека  →</string>
     <string name="chats_no_messages">Линия открыта · сообщений пока нет</string>
     <string name="chats_new">НОВЫЙ</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_subtitle">Профиль и локальный сеанс</string>
+    <string name="settings_profile_section">ПРОФИЛЬ</string>
+    <string name="settings_username">ЛОГИН: @%1$s · НЕ ИЗМЕНЯЕТСЯ</string>
+    <string name="settings_change_name">Изменить имя</string>
+    <string name="settings_app_section">ПРИЛОЖЕНИЕ</string>
+    <string name="settings_github_releases">Релизы на GitHub  →</string>
+    <string name="settings_link_error">Не удалось открыть внешний браузер.</string>
+    <string name="settings_account_section">АККАУНТ</string>
+    <string name="settings_logout">Выйти из аккаунта</string>
+    <string name="settings_name_dialog_title">ИЗМЕНИТЬ ОТОБРАЖАЕМОЕ ИМЯ</string>
+    <string name="settings_cancel">Отмена</string>
+    <string name="settings_save">Сохранить</string>
+    <string name="settings_logout_dialog_title">ВЫЙТИ ИЗ АККАУНТА?</string>
+    <string name="settings_logout_warning">Локально сохранённые чаты, сообщения и неотправленные сообщения этого аккаунта будут удалены с устройства.</string>
+    <string name="settings_logout_pending_warning">Есть неотправленные сообщения: %1$d. При выходе они будут удалены вместе с локальными чатами и сообщениями этого аккаунта.</string>
+    <string name="settings_logout_confirm">Выйти</string>
+    <string name="settings_logging_out">Выходим…</string>
 
     <!-- Search -->
     <string name="search_title">Поиск людей</string>

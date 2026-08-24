@@ -11,8 +11,10 @@ import com.example.bunbun.outbox.OutboxDrainResult
 import com.example.bunbun.outbox.OutboxFailureDisposition
 import com.example.bunbun.outbox.OutboxScheduler
 import com.example.bunbun.outbox.classifyOutboxHttpFailure
+import com.example.bunbun.outbox.canDrainOutbox
 import com.example.bunbun.push.PushTokenSynchronizer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
@@ -29,6 +31,17 @@ class BunbunRepository(
     private val pushTokens: PushTokenSynchronizer? = null,
 ) {
     private val accountMutex = Mutex()
+    private val logoutOperation = AccountLogoutOperation(
+        cancelOutbox = outboxScheduler::cancel,
+        activeAccountId = sessions::activeUserId,
+        unregisterPush = { pushTokens?.unregisterBeforeLogout() },
+        remoteLogout = {
+            if (sessions.peekToken() != null) unwrapApiResponse(api.logout())
+        },
+        clearSession = sessions::clear,
+        markPushSignedOut = { pushTokens?.markSignedOut() },
+        clearAccountData = local::clearAccountData,
+    )
 
     suspend fun restoreSession(): UserDto? {
         if (sessions.load() == null) return null
@@ -43,19 +56,29 @@ class BunbunRepository(
     }
 
     suspend fun refreshSession(): UserDto? {
-        if (sessions.currentOrLoad() == null) return null
+        val requestToken = sessions.currentOrLoad() ?: return null
         return try {
             val remote = unwrapApiResponse(api.me()).user
-            accountMutex.withLock { activate(remote, token = null) }
-            remote.also {
+            val active = accountMutex.withLock {
+                if (sessions.peekToken() != requestToken) return@withLock sessions.activeUser()
+                activate(remote, token = null)
+                remote
+            }
+            active?.also {
                 outboxScheduler.enqueue()
                 runCatching { pushTokens?.afterAuthentication() }
             }
         } catch (error: ApiException) {
             if (error.status == 401) {
-                accountMutex.withLock { sessions.clear() }
-                pushTokens?.markSignedOut()
-                null
+                accountMutex.withLock {
+                    if (sessions.peekToken() == requestToken) {
+                        sessions.clear()
+                        pushTokens?.markSignedOut()
+                        null
+                    } else {
+                        sessions.activeUser()
+                    }
+                }
             } else throw error
         }
     }
@@ -78,18 +101,32 @@ class BunbunRepository(
         return data.user
     }
 
-    suspend fun logout() = accountMutex.withLock {
-        try {
-            runCatching { pushTokens?.unregisterBeforeLogout() }
-            if (sessions.peekToken() != null) unwrapApiResponse(api.logout())
-        } finally {
-            sessions.clear()
-            pushTokens?.markSignedOut()
-        }
+    suspend fun logout() = accountMutex.withLock { logoutOperation.execute() }
+
+    suspend fun updateDisplayName(displayName: String): UserDto = accountMutex.withLock {
+        val current = sessions.activeUser() ?: error("An authenticated account is required")
+        val normalized = normalizeDisplayName(displayName)
+        val updated = validateUpdatedProfile(
+            current,
+            unwrapApiResponse(api.updateProfile(UpdateProfileRequest(normalized))).user,
+        )
+        local.cacheCurrentUser(updated)
+        sessions.setActiveUser(updated)
+        updated
     }
 
     suspend fun activeAccountId(): Long = sessions.activeUserId()
         ?: error("An authenticated account is required")
+
+    suspend fun authenticatedAccountId(): Long? {
+        if (sessions.currentOrLoad() == null) return null
+        return sessions.activeUserId()
+    }
+
+    suspend fun pendingMessageCount(accountId: Long): Int {
+        requireActiveAccount(accountId)
+        return local.pendingMessageCount(accountId)
+    }
 
     fun observeChats(accountId: Long): Flow<List<CachedChat>> = local.observeChats(accountId)
 
@@ -100,14 +137,21 @@ class BunbunRepository(
 
     suspend fun syncChats(accountId: Long) {
         requireActiveAccount(accountId)
-        local.mergeChats(accountId, unwrapApiResponse(api.chats()).chats)
+        val remote = unwrapApiResponse(api.chats()).chats
+        accountMutex.withLock {
+            requireActiveAccount(accountId)
+            local.mergeChats(accountId, remote)
+        }
     }
 
     suspend fun syncMessages(accountId: Long, chatId: Long) {
         requireActiveAccount(accountId)
         val afterId = local.maxServerId(accountId, chatId).takeIf { it > 0L }
         val data = unwrapApiResponse(api.messages(chatId, afterId))
-        local.mergeMessages(accountId, accountId, chatId, data)
+        accountMutex.withLock {
+            requireActiveAccount(accountId)
+            local.mergeMessages(accountId, accountId, chatId, data)
+        }
     }
 
     suspend fun searchUsers(query: String): List<UserDto> =
@@ -116,7 +160,10 @@ class BunbunRepository(
     suspend fun createDirect(userId: Long): ChatDto {
         val accountId = activeAccountId()
         val chat = unwrapApiResponse(api.createDirect(CreateDirectRequest(userId))).chat
-        local.mergeChats(accountId, listOf(chat))
+        accountMutex.withLock {
+            requireActiveAccount(accountId)
+            local.mergeChats(accountId, listOf(chat))
+        }
         return chat
     }
 
@@ -125,18 +172,19 @@ class BunbunRepository(
         unwrapApiResponse(api.touchPresence())
     }
 
-    suspend fun queueMessage(accountId: Long, chatId: Long, text: String): CachedMessage {
-        requireActiveAccount(accountId)
-        val message = local.queueOutgoing(accountId, chatId, accountId, text)
-        outboxScheduler.enqueue()
-        return message
-    }
+    suspend fun queueMessage(accountId: Long, chatId: Long, text: String): CachedMessage =
+        accountMutex.withLock {
+            requireActiveAccount(accountId)
+            val message = local.queueOutgoing(accountId, chatId, accountId, text)
+            outboxScheduler.enqueue()
+            message
+        }
 
-    suspend fun retryMessage(accountId: Long, localId: String): Boolean {
+    suspend fun retryMessage(accountId: Long, localId: String): Boolean = accountMutex.withLock {
         requireActiveAccount(accountId)
         val retried = local.retryFailed(localId, accountId)
         if (retried) outboxScheduler.enqueue()
-        return retried
+        retried
     }
 
     suspend fun markRead(accountId: Long, chatId: Long, messageId: Long) {
@@ -144,15 +192,24 @@ class BunbunRepository(
         local.clearUnread(accountId, chatId)
         if (local.myLastRead(accountId, chatId) >= messageId) return
         val confirmed = unwrapApiResponse(api.markRead(MarkReadRequest(chatId, messageId))).lastReadMessageId
-        local.markLocallyRead(accountId, chatId, confirmed)
+        accountMutex.withLock {
+            requireActiveAccount(accountId)
+            local.markLocallyRead(accountId, chatId, confirmed)
+        }
     }
 
     suspend fun drainOutbox(): OutboxDrainResult = accountMutex.withLock {
-        val accountId = sessions.activeUserId() ?: return OutboxDrainResult.AUTH_REQUIRED
-        if (sessions.currentOrLoad() == null) return OutboxDrainResult.AUTH_REQUIRED
+        val accountId = sessions.activeUserId()
+        val authenticated = sessions.currentOrLoad() != null
+        if (!canDrainOutbox(accountId, sessions.activeUserId(), authenticated)) {
+            return OutboxDrainResult.AUTH_REQUIRED
+        }
+        accountId ?: return OutboxDrainResult.AUTH_REQUIRED
         local.recoverInterruptedSends(accountId)
         for (pending in local.pendingMessages(accountId)) {
-            if (sessions.activeUserId() != accountId) return OutboxDrainResult.AUTH_REQUIRED
+            if (!canDrainOutbox(accountId, sessions.activeUserId(), sessions.peekToken() != null)) {
+                return OutboxDrainResult.AUTH_REQUIRED
+            }
             local.markSending(pending.localId)
             val acknowledged = try {
                 unwrapApiResponse(
@@ -182,6 +239,8 @@ class BunbunRepository(
             } catch (error: IOException) {
                 local.markPending(pending.localId, error.javaClass.simpleName)
                 return OutboxDrainResult.RETRY
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Throwable) {
                 local.markPending(pending.localId, error.javaClass.simpleName)
                 return OutboxDrainResult.RETRY
@@ -200,6 +259,27 @@ class BunbunRepository(
     private suspend fun requireActiveAccount(accountId: Long) {
         check(sessions.activeUserId() == accountId) { "The active account changed" }
     }
+}
+
+internal const val MAX_DISPLAY_NAME_LENGTH = 64
+
+internal fun normalizeDisplayName(value: String): String {
+    val normalized = value.trim()
+    val length = normalized.codePointCount(0, normalized.length)
+    require(length in 1..MAX_DISPLAY_NAME_LENGTH) { "LOCAL_DISPLAY_NAME_INVALID" }
+    return normalized
+}
+
+internal fun validateUpdatedProfile(current: UserDto, updated: UserDto): UserDto {
+    val displayNameLength = updated.displayName.codePointCount(0, updated.displayName.length)
+    if (
+        updated.id != current.id ||
+        updated.username != current.username ||
+        displayNameLength !in 1..MAX_DISPLAY_NAME_LENGTH
+    ) {
+        throw ApiException("PROFILE_RESPONSE_INVALID", "Server returned an invalid profile", 200)
+    }
+    return updated
 }
 
 fun <T> unwrapApiResponse(response: Response<ApiEnvelope<T>>): T {

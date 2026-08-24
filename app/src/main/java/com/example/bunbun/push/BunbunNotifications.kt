@@ -55,4 +55,8 @@ object BunbunNotifications {
             .build()
         NotificationManagerCompat.from(context).notify(payload.messageId.hashCode(), notification)
     }
+
+    fun clearAll(context: Context) {
+        NotificationManagerCompat.from(context).cancelAll()
+    }
 }

@@ -81,4 +81,16 @@ interface BunbunDao {
 
     @Query("UPDATE cached_chats SET unreadCount = 0, updatedAtMillis = :updatedAt WHERE accountId = :accountId AND chatId = :chatId")
     suspend fun clearUnread(accountId: Long, chatId: Long, updatedAt: Long)
+
+    @Query("SELECT COUNT(*) FROM cached_messages WHERE accountId = :accountId AND sendState IN ('PENDING', 'SENDING')")
+    suspend fun pendingMessageCount(accountId: Long): Int
+
+    @Query("DELETE FROM cached_messages WHERE accountId = :accountId")
+    suspend fun deleteAccountMessages(accountId: Long)
+
+    @Query("DELETE FROM cached_chats WHERE accountId = :accountId")
+    suspend fun deleteAccountChats(accountId: Long)
+
+    @Query("DELETE FROM cached_current_users WHERE accountId = :accountId")
+    suspend fun deleteAccountCurrentUser(accountId: Long)
 }

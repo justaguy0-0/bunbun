@@ -46,8 +46,8 @@ fun ChatsScreen(
     state: ChatsUiState,
     onRefresh: () -> Unit,
     onSearch: () -> Unit,
+    onSettings: () -> Unit,
     onChat: (CachedChat) -> Unit,
-    onLogout: () -> Unit,
 ) {
     TerminalScreen {
         Column(Modifier.fillMaxSize().navigationBarsPadding()) {
@@ -56,7 +56,7 @@ fun ChatsScreen(
                 subtitle = stringResource(R.string.chats_subtitle, currentUser.username),
                 actions = {
                     TerminalIconButton("⌕", stringResource(R.string.chats_find_people_description), onSearch)
-                    TerminalIconButton("×", stringResource(R.string.chats_logout_description), onLogout)
+                    TerminalIconButton("⚙", stringResource(R.string.chats_settings_description), onSettings)
                 },
             )
             if (state.offline && state.chats.isNotEmpty()) {

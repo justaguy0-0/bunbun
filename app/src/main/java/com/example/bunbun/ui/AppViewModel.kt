@@ -2,6 +2,7 @@ package com.example.bunbun.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bunbun.LogoutCoordinator
 import com.example.bunbun.data.model.UserDto
 import com.example.bunbun.data.repository.BunbunRepository
 import com.example.bunbun.ui.common.asUiError
@@ -17,7 +18,10 @@ sealed interface SessionState {
     data class Error(val message: String) : SessionState
 }
 
-class AppViewModel(private val repository: BunbunRepository) : ViewModel() {
+class AppViewModel(
+    private val repository: BunbunRepository,
+    private val logoutCoordinator: LogoutCoordinator,
+) : ViewModel() {
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Checking)
     val state: StateFlow<SessionState> = mutableState.asStateFlow()
 
@@ -37,11 +41,13 @@ class AppViewModel(private val repository: BunbunRepository) : ViewModel() {
 
     fun signedIn(user: UserDto) { mutableState.value = SessionState.SignedIn(user) }
 
-    fun logout() {
-        viewModelScope.launch {
-            runCatching { repository.logout() }
-            mutableState.value = SessionState.SignedOut
-        }
+    fun profileUpdated(user: UserDto) {
+        mutableState.value = SessionState.SignedIn(user)
+    }
+
+    suspend fun logout() {
+        logoutCoordinator.logout()
+        mutableState.value = SessionState.SignedOut
     }
 
     private fun refreshSessionInBackground() {

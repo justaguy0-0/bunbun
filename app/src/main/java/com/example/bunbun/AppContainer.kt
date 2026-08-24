@@ -43,4 +43,11 @@ class AppContainer(context: Context) {
     val repository = BunbunRepository(api, sessions, localDataStore, outboxScheduler, pushTokenSynchronizer)
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val presenceSynchronizer = PresenceSynchronizer(applicationScope, repository::touchPresence)
+    val logoutCoordinator = LogoutCoordinator(
+        presenceSynchronizer,
+        repository,
+        foregroundChatTracker,
+        pendingChatNavigation,
+        clearNotifications = { com.example.bunbun.push.BunbunNotifications.clearAll(appContext) },
+    )
 }

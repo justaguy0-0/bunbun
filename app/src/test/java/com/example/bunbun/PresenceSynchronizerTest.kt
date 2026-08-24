@@ -54,4 +54,19 @@ class PresenceSynchronizerTest {
         assertEquals(2, touches)
         synchronizer.stop()
     }
+
+    @Test fun authenticationRestartsLoopAfterLogoutStop() = runTest {
+        var touches = 0
+        val synchronizer = PresenceSynchronizer(this, { touches++ }, intervalMillis = 60_000L)
+
+        synchronizer.start()
+        runCurrent()
+        synchronizer.stop()
+        synchronizer.onAuthenticated()
+        runCurrent()
+
+        assertTrue(synchronizer.isRunning)
+        assertEquals(2, touches)
+        synchronizer.stop()
+    }
 }

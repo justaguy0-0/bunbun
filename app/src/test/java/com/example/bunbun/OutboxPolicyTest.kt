@@ -3,6 +3,7 @@ package com.example.bunbun
 import com.example.bunbun.data.local.MessageSendState
 import com.example.bunbun.outbox.OutboxFailureDisposition
 import com.example.bunbun.outbox.classifyOutboxHttpFailure
+import com.example.bunbun.outbox.canDrainOutbox
 import com.example.bunbun.ui.chat.messageStatusSymbol
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -27,5 +28,11 @@ class OutboxPolicyTest {
         assertEquals("◷", messageStatusSymbol(MessageSendState.PENDING))
         assertEquals("✓", messageStatusSymbol(MessageSendState.SENT))
         assertEquals("✓✓", messageStatusSymbol(MessageSendState.READ))
+    }
+
+    @Test fun staleWorkerCannotDrainAfterLogoutOrForAnotherAccount() {
+        assertEquals(false, canDrainOutbox(capturedAccountId = 1, activeAccountId = null, authenticated = false))
+        assertEquals(false, canDrainOutbox(capturedAccountId = 1, activeAccountId = 2, authenticated = true))
+        assertEquals(true, canDrainOutbox(capturedAccountId = 2, activeAccountId = 2, authenticated = true))
     }
 }

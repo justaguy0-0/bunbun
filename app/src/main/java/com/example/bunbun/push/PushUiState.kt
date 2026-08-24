@@ -14,6 +14,7 @@ class ForegroundChatTracker {
     fun setForeground(value: Boolean) = foreground.set(value)
     fun setActiveChat(chatId: Long) = activeChat.set(chatId)
     fun clearActiveChat(chatId: Long) = activeChat.compareAndSet(chatId, NO_CHAT)
+    fun clear() = activeChat.set(NO_CHAT)
     fun shouldSuppress(chatId: Long): Boolean = NotificationSuppressionPolicy.shouldSuppress(
         appInForeground = foreground.get(),
         activeChatId = activeChat.get().takeUnless { it == NO_CHAT },
@@ -29,6 +30,7 @@ class PendingChatNavigation {
 
     fun post(target: ChatNavigationTarget) { mutableTarget.value = target }
     fun consume(target: ChatNavigationTarget) { mutableTarget.compareAndSet(target, null) }
+    fun clear() { mutableTarget.value = null }
 }
 
 class NotificationPermissionPreferences(context: Context) {

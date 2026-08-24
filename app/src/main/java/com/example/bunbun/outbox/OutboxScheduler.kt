@@ -17,5 +17,9 @@ class OutboxScheduler(context: Context) {
         workManager.enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, request)
     }
 
+    fun cancel() {
+        workManager.cancelUniqueWork(UNIQUE_WORK)
+    }
+
     companion object { const val UNIQUE_WORK = "bunbun_outbox" }
 }

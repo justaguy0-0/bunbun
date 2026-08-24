@@ -24,14 +24,15 @@ class BunbunFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val payload = PushMessagePayload.parse(message.data) ?: return
         scope.launch {
+            val accountId = container.repository.authenticatedAccountId() ?: return@launch
             runCatching {
-                val accountId = container.repository.activeAccountId()
                 container.repository.syncChats(accountId)
                 container.repository.syncMessages(accountId, payload.chatId)
             }
+            if (container.repository.authenticatedAccountId() != accountId) return@launch
+            if (container.foregroundChatTracker.shouldSuppress(payload.chatId)) return@launch
+            BunbunNotifications.show(this@BunbunFirebaseMessagingService, payload)
         }
-        if (container.foregroundChatTracker.shouldSuppress(payload.chatId)) return
-        BunbunNotifications.show(this, payload)
     }
 
     override fun onDestroy() {

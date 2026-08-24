@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,6 +115,37 @@ class LocalDataStoreTest {
             Instant.parse(refreshedSeen).toEpochMilli(),
             offlineStore.observeChat(ACCOUNT_A, CHAT_ID).first()?.peerLastSeenAtMillis,
         )
+    }
+
+    @Test fun profileUpdateIsCachedWithoutChangingUsername() = runBlocking {
+        val store = store()
+        val original = UserDto(ACCOUNT_A, "stable_login", "Иван", "2026-08-24T00:00:00Z")
+        store.cacheCurrentUser(original)
+        store.cacheCurrentUser(original.copy(displayName = "Иван П."))
+
+        val cached = store.cachedCurrentUser(ACCOUNT_A)!!
+        assertEquals("stable_login", cached.username)
+        assertEquals("Иван П.", cached.displayName)
+    }
+
+    @Test fun clearAccountDataRemovesChatsMessagesProfileAndPendingWithoutTouchingOtherAccount() = runBlocking {
+        val store = store()
+        store.cacheCurrentUser(UserDto(ACCOUNT_A, "account_a", "A", "2026-08-24T00:00:00Z"))
+        store.cacheCurrentUser(UserDto(ACCOUNT_B, "account_b", "B", "2026-08-24T00:00:00Z"))
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer A")))
+        store.mergeChats(ACCOUNT_B, listOf(chat(peerName = "Peer B")))
+        store.queueOutgoing(ACCOUNT_A, CHAT_ID, ACCOUNT_A, "pending A")
+        store.queueOutgoing(ACCOUNT_B, CHAT_ID, ACCOUNT_B, "pending B")
+
+        store.clearAccountData(ACCOUNT_A)
+
+        assertTrue(store.observeChats(ACCOUNT_A).first().isEmpty())
+        assertTrue(store.observeMessages(ACCOUNT_A, CHAT_ID).first().isEmpty())
+        assertEquals(0, store.pendingMessageCount(ACCOUNT_A))
+        assertEquals(null, store.cachedCurrentUser(ACCOUNT_A))
+        assertEquals("Peer B", store.observeChats(ACCOUNT_B).first().single().peerDisplayName)
+        assertEquals("pending B", store.observeMessages(ACCOUNT_B, CHAT_ID).first().single().text)
+        assertEquals("account_b", store.cachedCurrentUser(ACCOUNT_B)?.username)
     }
 
     private fun store() = LocalDataStore(database, now = { clock }, newClientId = { "00000000-0000-4000-8000-${(++clientSequence).toString().padStart(12, '0')}" })

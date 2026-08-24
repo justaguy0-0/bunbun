@@ -33,9 +33,11 @@ class PresenceSynchronizer(
         while (wakeUp.tryReceive().isSuccess) Unit
     }
 
-    /** Requests an immediate serialized touch after login/registration while already foregrounded. */
+    /** Restarts and immediately touches after login/registration in the active UI. */
     fun onAuthenticated() {
-        if (isRunning) wakeUp.trySend(Unit)
+        val wasRunning = isRunning
+        start()
+        if (wasRunning) wakeUp.trySend(Unit)
     }
 
     val isRunning: Boolean

@@ -47,6 +47,7 @@ data class ChatDto(
 )
 @Serializable data class MarkReadRequest(@SerialName("chat_id") val chatId: Long, @SerialName("message_id") val messageId: Long? = null)
 @Serializable data class PushTokenRequest(val token: String, val platform: String)
+@Serializable data class UpdateProfileRequest(@SerialName("display_name") val displayName: String)
 
 @Serializable
 data class AuthData(

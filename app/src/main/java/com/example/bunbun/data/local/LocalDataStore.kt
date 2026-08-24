@@ -106,6 +106,14 @@ class LocalDataStore(
 
     suspend fun pendingMessages(accountId: Long): List<CachedMessageEntity> = dao.pendingMessages(accountId)
 
+    suspend fun pendingMessageCount(accountId: Long): Int = dao.pendingMessageCount(accountId)
+
+    suspend fun clearAccountData(accountId: Long) = database.withTransaction {
+        dao.deleteAccountMessages(accountId)
+        dao.deleteAccountChats(accountId)
+        dao.deleteAccountCurrentUser(accountId)
+    }
+
     suspend fun recoverInterruptedSends(accountId: Long) = dao.recoverInterruptedSends(accountId)
 
     suspend fun markSending(localId: String) = dao.markSending(localId, now())

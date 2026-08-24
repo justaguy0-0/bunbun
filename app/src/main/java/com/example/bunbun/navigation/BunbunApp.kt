@@ -9,11 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -61,20 +64,28 @@ import com.example.bunbun.ui.common.TerminalState
 import com.example.bunbun.ui.common.localizedErrorMessage
 import com.example.bunbun.ui.search.SearchScreen
 import com.example.bunbun.ui.search.SearchViewModel
+import com.example.bunbun.ui.settings.SettingsScreen
+import com.example.bunbun.ui.settings.SettingsViewModel
 
 @Composable
 fun BunbunApp(container: AppContainer) {
     val repository = container.repository
-    val factory = remember(repository) { ViewModelFactory { AppViewModel(repository) } }
+    val factory = remember(repository, container.logoutCoordinator) {
+        ViewModelFactory { AppViewModel(repository, container.logoutCoordinator) }
+    }
     val appViewModel: AppViewModel = viewModel(factory = factory)
     when (val session = appViewModel.state.collectAsState().value) {
         SessionState.Checking -> LoadingScreen()
-        SessionState.SignedOut -> AuthNavigation(repository, appViewModel::signedIn)
+        SessionState.SignedOut -> {
+            LaunchedEffect(Unit) { container.pendingChatNavigation.clear() }
+            AuthNavigation(repository, appViewModel::signedIn)
+        }
         is SessionState.SignedIn -> {
             LaunchedEffect(session.user.id) { container.presenceSynchronizer.onAuthenticated() }
             MainNavigation(
                 repository,
                 session.user,
+                appViewModel::profileUpdated,
                 appViewModel::logout,
                 container.foregroundChatTracker,
                 container.pendingChatNavigation,
@@ -91,6 +102,7 @@ private fun AuthNavigation(repository: BunbunRepository, onSignedIn: (UserDto) -
     NavHost(
         navController = nav,
         startDestination = "login",
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         enterTransition = { forwardEnter() },
         exitTransition = { forwardExit() },
         popEnterTransition = { backEnter() },
@@ -113,7 +125,8 @@ private fun AuthNavigation(repository: BunbunRepository, onSignedIn: (UserDto) -
 private fun MainNavigation(
     repository: BunbunRepository,
     currentUser: UserDto,
-    onLogout: () -> Unit,
+    onProfileUpdated: (UserDto) -> Unit,
+    onLogout: suspend () -> Unit,
     foregroundChatTracker: com.example.bunbun.push.ForegroundChatTracker,
     pendingChatNavigation: com.example.bunbun.push.PendingChatNavigation,
 ) {
@@ -121,49 +134,95 @@ private fun MainNavigation(
     val pendingTarget by pendingChatNavigation.target.collectAsState()
     LaunchedEffect(pendingTarget) {
         pendingTarget?.let { target ->
-            nav.navigate("chat/${target.chatId}/${Uri.encode(target.peerName)}") {
+            nav.navigate(chatRoute(target.chatId, target.peerName, fromPush = true)) {
                 launchSingleTop = true
-                popUpTo("chats") { inclusive = false }
+                popUpTo(CHATS_ROUTE) { inclusive = false }
             }
             pendingChatNavigation.consume(target)
         }
     }
     NavHost(
         navController = nav,
-        startDestination = "chats",
-        enterTransition = { forwardEnter() },
-        exitTransition = { forwardExit() },
-        popEnterTransition = { backEnter() },
-        popExitTransition = { backExit() },
+        startDestination = CHATS_ROUTE,
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        enterTransition = {
+            when {
+                targetState.arguments?.getBoolean(CHAT_FROM_PUSH_ARG) == true -> pushChatEnter()
+                classifyMainNavigationTransition(initialState.destination.route, targetState.destination.route) ==
+                    MainNavigationTransition.CHAT_FORWARD -> chatForwardEnter()
+                else -> forwardEnter()
+            }
+        },
+        exitTransition = {
+            when {
+                targetState.arguments?.getBoolean(CHAT_FROM_PUSH_ARG) == true -> pushChatExit()
+                classifyMainNavigationTransition(initialState.destination.route, targetState.destination.route) ==
+                    MainNavigationTransition.CHAT_FORWARD -> chatsForwardExit()
+                else -> forwardExit()
+            }
+        },
+        popEnterTransition = {
+            if (classifyMainNavigationTransition(initialState.destination.route, targetState.destination.route) ==
+                MainNavigationTransition.CHAT_BACK
+            ) chatsBackEnter() else backEnter()
+        },
+        popExitTransition = {
+            if (classifyMainNavigationTransition(initialState.destination.route, targetState.destination.route) ==
+                MainNavigationTransition.CHAT_BACK
+            ) chatBackExit() else backExit()
+        },
     ) {
-        composable("chats") {
+        composable(CHATS_ROUTE) {
             val vm: ChatsViewModel = viewModel(factory = ViewModelFactory { ChatsViewModel(currentUser.id, repository) })
             val state by vm.state.collectAsState()
             ChatsScreen(
                 currentUser = currentUser,
                 state = state,
                 onRefresh = vm::refresh,
-                onSearch = { nav.navigate("search") },
-                onChat = { nav.navigate("chat/${it.id}/${Uri.encode(it.peerDisplayName)}") },
-                onLogout = onLogout,
+                onSearch = { nav.navigate(SEARCH_ROUTE) },
+                onSettings = { nav.navigate(SETTINGS_ROUTE) },
+                onChat = { nav.navigate(chatRoute(it.id, it.peerDisplayName)) },
             )
         }
-        composable("search") {
+        composable(SETTINGS_ROUTE) {
+            val vm: SettingsViewModel = viewModel(
+                factory = ViewModelFactory {
+                    SettingsViewModel(currentUser, repository, onProfileUpdated, onLogout)
+                },
+            )
+            val state by vm.state.collectAsState()
+            SettingsScreen(
+                state = state,
+                onBack = { nav.popBackStack() },
+                onEditName = vm::showNameDialog,
+                onNameChange = vm::changeDisplayName,
+                onSaveName = vm::saveDisplayName,
+                onDismissName = vm::dismissNameDialog,
+                onRequestLogout = vm::showLogoutDialog,
+                onConfirmLogout = vm::confirmLogout,
+                onDismissLogout = vm::dismissLogoutDialog,
+            )
+        }
+        composable(SEARCH_ROUTE) {
             val vm: SearchViewModel = viewModel(factory = ViewModelFactory { SearchViewModel(repository) })
             val state by vm.state.collectAsState()
             SearchScreen(
                 state = state,
                 onSearch = vm::search,
                 onCreate = { id, _, callback -> state.users.firstOrNull { it.id == id }?.let { vm.createDirect(it, callback) } },
-                onChat = { nav.navigate("chat/${it.id}/${Uri.encode(it.peer.displayName)}") },
+                onChat = { nav.navigate(chatRoute(it.id, it.peer.displayName)) },
                 onBack = { nav.popBackStack() },
             )
         }
         composable(
-            route = "chat/{chatId}/{peerName}",
+            route = CHAT_ROUTE_PATTERN,
             arguments = listOf(
                 navArgument("chatId") { type = NavType.LongType },
                 navArgument("peerName") { type = NavType.StringType },
+                navArgument(CHAT_FROM_PUSH_ARG) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             ),
         ) { entry ->
             val chatId = entry.arguments?.getLong("chatId") ?: return@composable
@@ -263,3 +322,44 @@ private fun forwardEnter(): EnterTransition = fadeIn(tween(180)) + slideInHorizo
 private fun forwardExit(): ExitTransition = fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { -it / 14 }
 private fun backEnter(): EnterTransition = fadeIn(tween(180)) + slideInHorizontally(tween(220)) { -it / 10 }
 private fun backExit(): ExitTransition = fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { it / 14 }
+
+private fun chatRoute(chatId: Long, peerName: String, fromPush: Boolean = false): String =
+    "chat/$chatId/${Uri.encode(peerName)}?$CHAT_FROM_PUSH_ARG=$fromPush"
+
+private fun chatForwardEnter(): EnterTransition = fadeIn(
+    animationSpec = tween(180, easing = FastOutSlowInEasing),
+    initialAlpha = 0.90f,
+) + slideInHorizontally(
+    animationSpec = tween(200, easing = FastOutSlowInEasing),
+) { width -> width / 8 }
+
+private fun chatsForwardExit(): ExitTransition = fadeOut(
+    animationSpec = tween(160, easing = FastOutSlowInEasing),
+    targetAlpha = 0.90f,
+) + slideOutHorizontally(
+    animationSpec = tween(200, easing = FastOutSlowInEasing),
+) { width -> -width / 20 }
+
+private fun chatsBackEnter(): EnterTransition = fadeIn(
+    animationSpec = tween(180, easing = FastOutSlowInEasing),
+    initialAlpha = 0.90f,
+) + slideInHorizontally(
+    animationSpec = tween(200, easing = FastOutSlowInEasing),
+) { width -> -width / 20 }
+
+private fun chatBackExit(): ExitTransition = fadeOut(
+    animationSpec = tween(160, easing = FastOutSlowInEasing),
+    targetAlpha = 0.90f,
+) + slideOutHorizontally(
+    animationSpec = tween(200, easing = FastOutSlowInEasing),
+) { width -> width / 8 }
+
+private fun pushChatEnter(): EnterTransition = fadeIn(
+    animationSpec = tween(140, easing = FastOutSlowInEasing),
+    initialAlpha = 0.88f,
+)
+
+private fun pushChatExit(): ExitTransition = fadeOut(
+    animationSpec = tween(100, easing = FastOutSlowInEasing),
+    targetAlpha = 0.96f,
+)

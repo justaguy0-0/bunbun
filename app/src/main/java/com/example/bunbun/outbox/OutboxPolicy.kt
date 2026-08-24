@@ -7,3 +7,6 @@ fun classifyOutboxHttpFailure(status: Int): OutboxFailureDisposition = when {
     status >= 500 || status == 408 || status == 429 -> OutboxFailureDisposition.RETRY
     else -> OutboxFailureDisposition.FAILED
 }
+
+fun canDrainOutbox(capturedAccountId: Long?, activeAccountId: Long?, authenticated: Boolean): Boolean =
+    authenticated && capturedAccountId != null && capturedAccountId == activeAccountId

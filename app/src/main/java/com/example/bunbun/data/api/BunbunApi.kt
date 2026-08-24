@@ -12,6 +12,7 @@ interface BunbunApi {
     @POST("api/v1/auth/login.php") suspend fun login(@Body request: LoginRequest): Response<ApiEnvelope<AuthData>>
     @POST("api/v1/auth/logout.php") suspend fun logout(): Response<ApiEnvelope<LogoutData>>
     @GET("api/v1/auth/me.php") suspend fun me(): Response<ApiEnvelope<UserData>>
+    @POST("api/v1/profile/update.php") suspend fun updateProfile(@Body request: UpdateProfileRequest): Response<ApiEnvelope<UserData>>
     @GET("api/v1/users/search.php") suspend fun searchUsers(@Query("q") query: String): Response<ApiEnvelope<UsersData>>
     @GET("api/v1/chats/list.php") suspend fun chats(): Response<ApiEnvelope<ChatsData>>
     @POST("api/v1/chats/create-direct.php") suspend fun createDirect(@Body request: CreateDirectRequest): Response<ApiEnvelope<ChatData>>
