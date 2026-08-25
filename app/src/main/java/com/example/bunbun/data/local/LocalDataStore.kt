@@ -139,6 +139,8 @@ class LocalDataStore(
         ) && (remoteTime == null || (existing?.lastMessageCreatedAtMillis ?: Long.MIN_VALUE) >= remoteTime)
         val peerCursor = maxOf(existing?.peerLastReadMessageId ?: 0L, remote.peerLastReadMessageId ?: 0L)
             .takeIf { it > 0L }
+        val myCursor = maxOf(existing?.myLastReadMessageId ?: 0L, remote.myLastReadMessageId ?: 0L)
+            .takeIf { it > 0L }
         val last = remote.lastMessage
         val remoteState = last?.takeIf { it.senderId == accountId }?.let {
             if (it.id <= (peerCursor ?: 0L)) MessageSendState.READ else MessageSendState.SENT
@@ -160,7 +162,7 @@ class LocalDataStore(
             lastMessageSendState = if (keepLocalPreview) existing?.lastMessageSendState else remoteState?.name,
             unreadCount = remote.unreadCount.coerceAtLeast(0),
             peerLastReadMessageId = peerCursor,
-            myLastReadMessageId = existing?.myLastReadMessageId,
+            myLastReadMessageId = myCursor,
             updatedAtMillis = now(),
         )
         dao.upsertChat(updated)
@@ -233,6 +235,7 @@ private fun CachedChatEntity.asModel() = CachedChat(
         )
     },
     unreadCount = unreadCount.coerceAtLeast(0),
+    myLastReadMessageId = myLastReadMessageId,
 )
 
 private fun CachedMessageEntity.asModel() = CachedMessage(

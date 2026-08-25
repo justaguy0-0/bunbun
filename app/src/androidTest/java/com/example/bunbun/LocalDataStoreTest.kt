@@ -117,6 +117,15 @@ class LocalDataStoreTest {
         )
     }
 
+    @Test fun currentUsersReadCursorIsCachedAndNeverMovesBackward() = runBlocking {
+        val store = store()
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer", myReadCursor = 42)))
+        assertEquals(42L, store.observeChat(ACCOUNT_A, CHAT_ID).first()?.myLastReadMessageId)
+
+        store.mergeChats(ACCOUNT_A, listOf(chat(peerName = "Peer", myReadCursor = 21)))
+        assertEquals(42L, store.observeChat(ACCOUNT_A, CHAT_ID).first()?.myLastReadMessageId)
+    }
+
     @Test fun profileUpdateIsCachedWithoutChangingUsername() = runBlocking {
         val store = store()
         val original = UserDto(ACCOUNT_A, "stable_login", "Иван", "2026-08-24T00:00:00Z")
@@ -154,10 +163,11 @@ class LocalDataStoreTest {
         .allowMainThreadQueries()
         .build()
 
-    private fun chat(peerName: String, lastSeenAt: String? = null) = ChatDto(
+    private fun chat(peerName: String, lastSeenAt: String? = null, myReadCursor: Long? = null) = ChatDto(
         id = CHAT_ID,
         type = "direct",
         peer = UserDto(99, "peer", peerName, "2026-08-14T09:00:00Z", lastSeenAt),
+        myLastReadMessageId = myReadCursor,
     )
 
     private companion object {

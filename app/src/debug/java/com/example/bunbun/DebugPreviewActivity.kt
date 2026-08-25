@@ -98,6 +98,7 @@ class DebugPreviewActivity : ComponentActivity() {
                 peerLastSeenAtMillis = Instant.parse("2026-08-24T07:42:00Z").toEpochMilli(),
                 lastMessage = CachedChatPreview(null, "m4", "Сообщение пока в очереди", currentUser.id, previewMessages.last().createdAtMillis, MessageSendState.PENDING),
                 unreadCount = 2,
+                myLastReadMessageId = null,
             ),
         )
 

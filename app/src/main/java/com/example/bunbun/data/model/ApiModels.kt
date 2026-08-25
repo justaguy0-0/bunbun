@@ -35,6 +35,7 @@ data class ChatDto(
     @SerialName("last_message") val lastMessage: MessageDto? = null,
     @SerialName("unread_count") val unreadCount: Int = 0,
     @SerialName("peer_last_read_message_id") val peerLastReadMessageId: Long? = null,
+    @SerialName("my_last_read_message_id") val myLastReadMessageId: Long? = null,
 )
 
 @Serializable data class LoginRequest(val username: String, val password: String)

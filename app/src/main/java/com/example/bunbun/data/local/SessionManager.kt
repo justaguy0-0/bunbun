@@ -3,6 +3,8 @@ package com.example.bunbun.data.local
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.bunbun.push.PushSessionSource
+import com.example.bunbun.push.PushSessionSnapshot
+import com.example.bunbun.push.resolvePushSession
 import com.example.bunbun.data.model.UserDto
 
 class SessionManager(
@@ -17,6 +19,16 @@ class SessionManager(
     suspend fun setActiveUser(user: UserDto) = withContext(Dispatchers.IO) { metadataStore.writeUser(user) }
     suspend fun activeUser(): UserDto? = withContext(Dispatchers.IO) { metadataStore.readUser() }
     suspend fun activeUserId(): Long? = activeUser()?.id
+    fun pushSessionSnapshot(): PushSessionSnapshot {
+        val cachedSessionAvailable = peekToken() != null
+        val persistedToken = if (cachedSessionAvailable) null else tokenStore.read()
+        if (persistedToken != null) token = persistedToken
+        return resolvePushSession(
+            cachedSessionAvailable = cachedSessionAvailable,
+            persistedSessionAvailable = persistedToken != null,
+            persistedAccountId = metadataStore.readUser()?.id,
+        )
+    }
     suspend fun clear() = withContext(Dispatchers.IO) {
         tokenStore.clear()
         metadataStore.clear()

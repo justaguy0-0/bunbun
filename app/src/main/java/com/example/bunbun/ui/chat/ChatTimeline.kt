@@ -17,6 +17,10 @@ sealed interface ChatTimelineItem {
     data class Message(val value: CachedMessage) : ChatTimelineItem {
         override val key: String = value.stableKey
     }
+
+    data class NewMessagesDivider(val firstUnreadMessageId: Long) : ChatTimelineItem {
+        override val key: String = "new-messages:$firstUnreadMessageId"
+    }
 }
 
 fun buildChatTimeline(
@@ -24,6 +28,7 @@ fun buildChatTimeline(
     nowMillis: Long = System.currentTimeMillis(),
     zoneId: ZoneId = ZoneId.systemDefault(),
     locale: Locale = Locale("ru"),
+    firstUnreadIncomingMessageId: Long? = null,
 ): List<ChatTimelineItem> {
     val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
     val result = mutableListOf<ChatTimelineItem>()
@@ -34,6 +39,9 @@ fun buildChatTimeline(
             result += ChatTimelineItem.DateHeader(date, formatDateHeader(date, today, locale))
             previousDate = date
         }
+        firstUnreadIncomingMessageId
+            ?.takeIf { unreadId -> message.serverId == unreadId }
+            ?.let { unreadId -> result += ChatTimelineItem.NewMessagesDivider(unreadId) }
         result += ChatTimelineItem.Message(message)
     }
     return result

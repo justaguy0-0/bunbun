@@ -3,14 +3,19 @@ package com.example.bunbun.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bunbun.Config
+import com.example.bunbun.data.local.CachedChat
 import com.example.bunbun.data.local.CachedMessage
 import com.example.bunbun.data.repository.BunbunRepository
 import com.example.bunbun.ui.common.asUiError
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -23,6 +28,7 @@ data class ChatUiState(
     val saving: Boolean = false,
     val offline: Boolean = false,
     val error: String? = null,
+    val unreadDivider: UnreadDividerUiState = UnreadDividerUiState(),
 )
 
 class ChatViewModel(
@@ -33,22 +39,36 @@ class ChatViewModel(
     private val mutableState = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = mutableState.asStateFlow()
     private var readJob: Job? = null
+    private var dividerHideJob: Job? = null
     private var lastReadAttempt = 0L
+    private val unreadDividerSession = UnreadDividerSession()
+    private var initialDataReady = false
 
     init {
         viewModelScope.launch {
-            repository.observeChat(accountId, chatId).collect { chat ->
-                mutableState.update { it.copy(peerLastSeenAtMillis = chat?.peerLastSeenAtMillis) }
+            combine(
+                repository.observeChat(accountId, chatId),
+                repository.observeMessages(accountId, chatId),
+                ::Pair,
+            ).collect { (chat, messages) ->
+                applySnapshot(chat, messages)
             }
         }
         viewModelScope.launch {
-            repository.observeMessages(accountId, chatId).collect { messages ->
-                mutableState.update { it.copy(messages = messages, loading = it.loading && messages.isEmpty()) }
-                markLatestRead(messages)
+            coroutineScope {
+                val chatsSync = async { runCatching { repository.syncChats(accountId) } }
+                val messagesSync = async { syncMessages() }
+                chatsSync.await()
+                messagesSync.await()
             }
+            val (chat, messages) = combine(
+                repository.observeChat(accountId, chatId),
+                repository.observeMessages(accountId, chatId),
+                ::Pair,
+            ).first()
+            initialDataReady = true
+            applySnapshot(chat, messages)
         }
-        viewModelScope.launch { runCatching { repository.syncChats(accountId) } }
-        synchronize(initial = true)
         viewModelScope.launch {
             while (isActive) {
                 delay(Config.POLL_INTERVAL_MS)
@@ -85,20 +105,52 @@ class ChatViewModel(
         }
     }
 
-    private fun synchronize(initial: Boolean = false) {
-        viewModelScope.launch {
-            runCatching { repository.syncMessages(accountId, chatId) }
-                .onSuccess { mutableState.update { it.copy(loading = false, offline = false, error = null) } }
-                .onFailure { error ->
-                    mutableState.update {
-                        it.copy(
-                            loading = false,
-                            offline = true,
-                            error = if (it.messages.isEmpty()) error.asUiError("LOAD_MESSAGES_UNKNOWN") else null,
-                        )
-                    }
+    private fun synchronize() {
+        viewModelScope.launch { syncMessages() }
+    }
+
+    private suspend fun syncMessages() {
+        runCatching { repository.syncMessages(accountId, chatId) }
+            .onSuccess { mutableState.update { it.copy(loading = false, offline = false, error = null) } }
+            .onFailure { error ->
+                mutableState.update {
+                    it.copy(
+                        loading = false,
+                        offline = true,
+                        error = if (it.messages.isEmpty()) error.asUiError("LOAD_MESSAGES_UNKNOWN") else null,
+                    )
                 }
+            }
+    }
+
+    private fun applySnapshot(chat: CachedChat?, messages: List<CachedMessage>) {
+        if (chat != null) {
+            unreadDividerSession.capture(
+                messages = messages,
+                currentUserId = accountId,
+                myLastReadMessageId = chat.myLastReadMessageId,
+                initialDataReady = initialDataReady,
+            )
         }
+        mutableState.update {
+            it.copy(
+                messages = messages,
+                peerLastSeenAtMillis = chat?.peerLastSeenAtMillis,
+                loading = it.loading && messages.isEmpty(),
+                unreadDivider = unreadDividerSession.uiState,
+            )
+        }
+        if (unreadDividerSession.hasCaptured) markLatestRead(messages)
+    }
+
+    private fun startDividerHideTimer() {
+        if (dividerHideJob?.isActive == true) return
+        viewModelScope.launch {
+            delay(UNREAD_DIVIDER_HOLD_MILLIS)
+            mutableState.update { it.copy(unreadDivider = unreadDividerSession.onHoldTimeout()) }
+            delay(UNREAD_DIVIDER_FADE_MILLIS)
+            mutableState.update { it.copy(unreadDivider = unreadDividerSession.finishFade()) }
+        }.also { dividerHideJob = it }
     }
 
     private fun markLatestRead(messages: List<CachedMessage>) {
@@ -107,7 +159,13 @@ class ChatViewModel(
         lastReadAttempt = latestServerId
         readJob = viewModelScope.launch {
             runCatching { repository.markRead(accountId, chatId, latestServerId) }
+                .onSuccess {
+                    if (unreadDividerSession.onReadConfirmed()) startDividerHideTimer()
+                }
                 .onFailure { lastReadAttempt = 0L }
         }
     }
 }
+
+internal const val UNREAD_DIVIDER_HOLD_MILLIS = 5_000L
+internal const val UNREAD_DIVIDER_FADE_MILLIS = 300L

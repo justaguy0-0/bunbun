@@ -13,6 +13,7 @@
     <!-- Push notifications -->
     <string name="notification_channel_name">Сообщения</string>
     <string name="notification_channel_description">Новые сообщения Bunbun</string>
+    <string name="notification_new_message">Новое сообщение</string>
     <string name="notification_permission_title">РАЗРЕШИТЬ УВЕДОМЛЕНИЯ?</string>
     <string name="notification_permission_message">Bunbun сможет сообщать о новых сообщениях, когда приложение закрыто.</string>
     <string name="notification_permission_allow">Разрешить</string>
@@ -125,6 +126,7 @@
     <string name="chat_peer_receive">СОБЕСЕДНИК / ПРИЁМ</string>
     <string name="chat_you_transmit">ВЫ / ПЕРЕДАЧА</string>
     <string name="chat_new_message">НОВОЕ СООБЩЕНИЕ</string>
+    <string name="chat_new_messages_divider">НОВЫЕ</string>
     <string name="chat_message">Сообщение</string>
     <string name="chat_send_description">Отправить сообщение</string>
     <string name="chat_open_link_description">Открыть ссылку:</string>

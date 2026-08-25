@@ -15,11 +15,13 @@ class ForegroundChatTracker {
     fun setActiveChat(chatId: Long) = activeChat.set(chatId)
     fun clearActiveChat(chatId: Long) = activeChat.compareAndSet(chatId, NO_CHAT)
     fun clear() = activeChat.set(NO_CHAT)
-    fun shouldSuppress(chatId: Long): Boolean = NotificationSuppressionPolicy.shouldSuppress(
+    fun snapshot() = ForegroundChatState(
         appInForeground = foreground.get(),
         activeChatId = activeChat.get().takeUnless { it == NO_CHAT },
-        incomingChatId = chatId,
     )
+    fun shouldSuppress(chatId: Long): Boolean = snapshot().let {
+        NotificationSuppressionPolicy.shouldSuppress(it.appInForeground, it.activeChatId, chatId)
+    }
 
     private companion object { const val NO_CHAT = -1L }
 }

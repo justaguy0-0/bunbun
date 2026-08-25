@@ -4,6 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,7 +48,14 @@ fun ChatScreen(
 ) {
     val listState = rememberLazyListState()
     val initialScrollState = remember { ChatInitialScrollState() }
-    val timeline = remember(state.messages) { buildChatTimeline(state.messages) }
+    val timeline = remember(state.messages, state.unreadDivider.firstUnreadIncomingMessageId) {
+        buildChatTimeline(
+            messages = state.messages,
+            firstUnreadIncomingMessageId = state.unreadDivider.firstUnreadIncomingMessageId,
+        )
+    }
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val imeOpenScrollState = remember { ImeOpenScrollState(imeVisible) }
     LaunchedEffect(timeline.lastOrNull()?.key) {
         val initialTarget = initialScrollState.consumeTargetIndex(timeline.size)
         if (initialTarget != null) {
@@ -57,6 +69,12 @@ fun ChatScreen(
         val wasNearBottom = !listState.canScrollForward ||
             lastVisibleIndex != null && lastVisibleIndex >= (layoutInfo.totalItemsCount - 2).coerceAtLeast(0)
         if (wasNearBottom) listState.animateScrollToItem(timeline.lastIndex)
+    }
+    LaunchedEffect(imeVisible) {
+        if (!imeOpenScrollState.onVisibilityChanged(imeVisible)) return@LaunchedEffect
+        withFrameNanos { }
+        val lastIndex = listState.layoutInfo.totalItemsCount - 1
+        if (lastIndex >= 0) listState.animateScrollToItem(lastIndex)
     }
 
     TerminalScreen {
@@ -105,6 +123,7 @@ fun ChatScreen(
                         items(timeline, key = ChatTimelineItem::key) { item ->
                             when (item) {
                                 is ChatTimelineItem.DateHeader -> DateSeparator(item.label)
+                                is ChatTimelineItem.NewMessagesDivider -> NewMessagesDivider(state.unreadDivider.visible)
                                 is ChatTimelineItem.Message -> MessageBubble(item.value, onRetryMessage)
                             }
                         }
@@ -119,6 +138,25 @@ fun ChatScreen(
                 onDraft = onDraft,
                 onSend = onSend,
             )
+        }
+    }
+}
+
+@Composable
+private fun NewMessagesDivider(visible: Boolean) {
+    AnimatedVisibility(
+        visible = visible,
+        exit = fadeOut(animationSpec = tween(UNREAD_DIVIDER_FADE_MILLIS.toInt())),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.72f))
+            Text(
+                stringResource(R.string.chat_new_messages_divider),
+                modifier = Modifier.padding(horizontal = 10.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.72f))
         }
     }
 }

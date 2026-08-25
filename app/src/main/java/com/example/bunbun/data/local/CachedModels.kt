@@ -17,6 +17,7 @@ data class CachedChat(
     val peerLastSeenAtMillis: Long?,
     val lastMessage: CachedChatPreview?,
     val unreadCount: Int,
+    val myLastReadMessageId: Long?,
 )
 
 data class CachedChatPreview(

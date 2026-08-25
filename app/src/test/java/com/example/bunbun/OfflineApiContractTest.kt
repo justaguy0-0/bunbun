@@ -3,6 +3,7 @@ package com.example.bunbun
 import com.example.bunbun.data.api.BunbunApi
 import com.example.bunbun.data.api.NetworkModule
 import com.example.bunbun.data.model.ApiEnvelope
+import com.example.bunbun.data.model.ChatsData
 import com.example.bunbun.data.model.MessagesData
 import com.example.bunbun.data.model.SendMessageRequest
 import kotlinx.coroutines.runBlocking
@@ -56,5 +57,13 @@ class OfflineApiContractTest {
         )
         assertTrue(decoded.data!!.messages.isEmpty())
         assertEquals(123L, decoded.data!!.peerLastReadMessageId)
+    }
+
+    @Test fun chatListCarriesCurrentUsersReadCursor() {
+        val decoded = NetworkModule.json.decodeFromString<ApiEnvelope<ChatsData>>(
+            """{"ok":true,"data":{"chats":[{"id":2,"type":"direct","peer":{"id":9,"username":"peer","display_name":"Peer","created_at":"2026-08-14T10:00:00Z"},"unread_count":2,"my_last_read_message_id":123}]}}""",
+        )
+
+        assertEquals(123L, decoded.data!!.chats.single().myLastReadMessageId)
     }
 }
